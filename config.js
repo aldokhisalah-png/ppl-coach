@@ -2,6 +2,6 @@
 // the row-level security rules in supabase-setup.sql, which only let a signed-in user see
 // and change their own rows.
 window.PPL_CONFIG = {
-  supabaseUrl: '',
-  supabaseAnonKey: ''
+  supabaseUrl: 'https://mwlzmpyiendhvebkatfi.supabase.co',
+  supabaseAnonKey: 'sb_publishable_6-Z4ivZdsmcOgtw3LyhXeg_IpiIpggI'
 };
