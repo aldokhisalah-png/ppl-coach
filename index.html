@@ -1,0 +1,1331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PPL Coach</title>
+<meta name="theme-color" content="#0a0b0d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="PPL Coach">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="stylesheet" href="fonts.css">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<style>html,body{background:#0a0b0d;margin:0}</style>
+<script src="vendor/react.production.min.js"></script>
+<script src="vendor/react-dom.production.min.js"></script>
+<script src="vendor/supabase.js"></script>
+<script src="config.js"></script>
+<script src="ppl-logic.js"></script>
+<script src="support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0b0d">
+<title>PPL Coach</title>
+
+<style>
+html,body{margin:0;background:#0a0b0d;color:#f1efe9;-webkit-tap-highlight-color:transparent;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+a{color:#f5c542}a:hover{color:#ffd96b}
+button,input{font-family:inherit}
+button:focus-visible,input:focus-visible{outline:2px solid #f5c542;outline-offset:2px}
+input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+input[type="date"]{color-scheme:dark}
+@keyframes rise{from{opacity:0;transform:translateY(16px) scale(.985)}to{opacity:1;transform:none}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@keyframes pop{0%{transform:scale(.5);opacity:0}60%{transform:scale(1.08);opacity:1}100%{transform:scale(1);opacity:1}}
+@keyframes sheet{from{transform:translateY(48px);opacity:0}to{transform:none;opacity:1}}
+@keyframes confetti{0%{transform:translate(0,0) rotate(0);opacity:1}100%{transform:translate(var(--x),var(--y)) rotate(var(--r));opacity:0}}
+@keyframes shimmer{from{background-position:200% 0}to{background-position:-200% 0}}
+@keyframes breathe{0%,100%{transform:scale(1)}50%{transform:scale(1.035)}}
+@keyframes drift{0%,100%{transform:translate(0,0)}50%{transform:translate(-18px,14px)}}
+@media (prefers-reduced-motion: reduce){*{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+</style>
+</helmet>
+<div style="min-height:100vh;display:flex;background:radial-gradient(900px 520px at 75% -180px, rgba(245,197,66,.08), transparent 65%), #0a0b0d;color:#f1efe9;font:15px/1.5 'IBM Plex Sans',system-ui,-apple-system,sans-serif">
+
+  <sc-if value="{{wide}}" hint-placeholder-val="{{false}}">
+    <aside style="width:248px;flex:none;position:sticky;top:0;height:100vh;padding:30px 18px;display:flex;flex-direction:column;gap:30px;border-right:1px solid rgba(255,255,255,.06)">
+      <div style="display:flex;align-items:center;gap:12px;padding:0 6px">
+        <div style="width:36px;height:36px;border-radius:11px;background:#f5c542;color:#191204;display:grid;place-items:center;font:800 20px/1 'Barlow Condensed';box-shadow:0 8px 24px -6px rgba(245,197,66,.6)">P</div>
+        <div style="font:700 22px/1 'Barlow Condensed';letter-spacing:.06em">PPL COACH</div>
+      </div>
+      <nav style="display:flex;flex-direction:column;gap:4px">
+        <sc-for list="{{nav}}" as="n" hint-placeholder-count="4">
+          <button onClick="{{n.go}}" style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:14px;border:0;cursor:pointer;text-align:left;font:600 15px 'IBM Plex Sans';background:{{n.sideBg}};color:{{n.sideFg}};transition:background .25s,color .25s,transform .15s" style-active="transform:scale(.97)">
+            <span style="width:6px;height:6px;border-radius:50%;background:{{n.bar}};transition:background .25s"></span>{{n.label}}
+          </button>
+        </sc-for>
+      </nav>
+      <div style="margin-top:auto;padding:18px;border-radius:20px;background:#131519;border:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;gap:4px">
+        <span style="font:600 11px/1 'IBM Plex Sans';letter-spacing:.16em;text-transform:uppercase;color:#8e949b">Streak</span>
+        <div style="display:flex;align-items:baseline;gap:6px;margin-top:6px"><span style="font:800 46px/.9 'Barlow Condensed'">{{streak.cur}}</span><span style="color:#8e949b">{{streak.unit}}</span></div>
+        <span style="font-size:12px;color:#a3a9b0">{{streak.sideMsg}}</span>
+      </div>
+    </aside>
+  </sc-if>
+
+  <main style="flex:1;min-width:0;padding:max(20px, env(safe-area-inset-top)) clamp(16px,3.2vw,44px) 140px;display:flex;justify-content:center">
+    <div style="width:100%;max-width:1100px;display:flex;flex-direction:column;gap:20px;padding-top:clamp(0px,1.5vw,16px)">
+
+      <sc-if value="{{loading}}" hint-placeholder-val="{{false}}">
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div style="height:40px;width:220px;border-radius:12px;background:linear-gradient(90deg,#131519 25%,#1d2025 50%,#131519 75%);background-size:200% 100%;animation:shimmer 1.4s linear infinite"></div>
+          <div style="height:380px;border-radius:30px;background:linear-gradient(90deg,#131519 25%,#1d2025 50%,#131519 75%);background-size:200% 100%;animation:shimmer 1.4s linear infinite"></div>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{storageWarn}}" hint-placeholder-val="{{false}}">
+        <div style="padding:12px 16px;border-radius:16px;background:rgba(255,138,101,.1);border:1px solid rgba(255,138,101,.4);font-size:13px">This browser is blocking storage, so changes may not be kept. Open the app normally (not in a private window), and download a backup from Settings.</div>
+      </sc-if>
+
+      <!-- TODAY -->
+      <sc-if value="{{isHome}}" hint-placeholder-val="{{false}}">
+        <div style="display:flex;flex-direction:column;gap:22px">
+          <header style="display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;animation:rise .5s cubic-bezier(.2,.8,.2,1) both">
+            <div>
+              <div style="font:600 11px/1 'IBM Plex Sans';letter-spacing:.16em;text-transform:uppercase;color:#8e949b">{{home.date}}</div>
+              <h1 style="margin:10px 0 0;font:700 clamp(36px,5vw,48px)/1 'Barlow Condensed';letter-spacing:.01em">{{home.greeting}}</h1>
+            </div>
+            <div style="display:flex;align-items:center;gap:10px;padding:6px 16px 6px 6px;border-radius:999px;background:#131519;border:1px solid rgba(255,255,255,.07)">
+              <div style="width:34px;height:34px;border-radius:50%;background:{{streak.chipBg}};color:{{streak.chipFg}};display:grid;place-items:center;font:800 18px/1 'Barlow Condensed';transition:background .3s">{{streak.cur}}</div>
+              <div style="font:600 13px/1.2 'IBM Plex Sans'">{{streak.chipLabel}}</div>
+            </div>
+          </header>
+
+          <sc-if value="{{streak.atRisk}}">
+            <div style="display:flex;align-items:center;gap:12px;padding:14px 18px;border-radius:18px;background:rgba(255,138,101,.08);border:1px solid rgba(255,138,101,.35);animation:rise .5s .05s both">
+              <span style="width:10px;height:10px;flex:none;border-radius:50%;background:#ff8a65;box-shadow:0 0 14px #ff8a65;animation:breathe 1.6s ease-in-out infinite"></span>
+              <span style="font-weight:500">{{streak.msg}}</span>
+            </div>
+          </sc-if>
+
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,400px),1fr));gap:18px;align-items:start">
+            <section style="position:relative;overflow:hidden;border-radius:32px;padding:clamp(22px,3vw,32px);background:linear-gradient(165deg,#1d2025 0%,#121418 70%);border:1px solid rgba(255,255,255,.08);box-shadow:0 40px 90px -40px rgba(0,0,0,.9);display:flex;flex-direction:column;gap:22px;animation:rise .65s .05s cubic-bezier(.2,.8,.2,1) both">
+              <div style="position:absolute;right:-100px;top:-120px;width:360px;height:360px;border-radius:50%;background:radial-gradient(circle,rgba(245,197,66,.26),transparent 68%);pointer-events:none;animation:drift 9s ease-in-out infinite"></div>
+              <div style="position:relative;display:flex;justify-content:space-between;align-items:center;gap:10px">
+                <span style="font:600 11px/1 'IBM Plex Sans';letter-spacing:.16em;text-transform:uppercase;color:#8e949b">Today’s session</span>
+                <span style="font:700 10px/1 'IBM Plex Sans';letter-spacing:.14em;text-transform:uppercase;padding:7px 11px;border-radius:999px;background:{{home.badgeBg}};color:{{home.badgeFg}}">{{home.badge}}</span>
+              </div>
+              <div style="position:relative">
+                <div style="font:800 clamp(100px,17vw,160px)/.8 'Barlow Condensed';letter-spacing:-.01em;text-transform:uppercase">{{home.dayName}}</div>
+                <div style="margin-top:14px;color:#a3a9b0">{{home.tagline}}</div>
+              </div>
+              <sc-if value="{{home.training}}" hint-placeholder-val="{{true}}">
+                <div style="position:relative;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px">
+                  <sc-for list="{{home.stats}}" as="s" hint-placeholder-count="3">
+                    <div style="padding:14px;border-radius:18px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.06)">
+                      <div style="font:700 32px/1 'Barlow Condensed';font-variant-numeric:tabular-nums">{{s.n}}</div>
+                      <div style="margin-top:4px;font-size:12px;color:#8e949b">{{s.l}}</div>
+                    </div>
+                  </sc-for>
+                </div>
+                <sc-if value="{{home.hasUp}}">
+                  <div style="position:relative;display:flex;align-items:center;gap:10px;color:#f5c542;font-weight:600"><span style="width:8px;height:8px;border-radius:50%;background:#f5c542;box-shadow:0 0 12px #f5c542"></span>{{home.upLine}}</div>
+                </sc-if>
+                <button onClick="{{home.start}}" style="position:relative;height:68px;border:0;border-radius:22px;background:#f5c542;color:#191204;font:700 18px 'IBM Plex Sans';cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:0 26px;box-shadow:0 18px 44px -14px rgba(245,197,66,.65);transition:transform .15s cubic-bezier(.2,.8,.2,1),box-shadow .25s" style-hover="box-shadow:0 22px 56px -12px rgba(245,197,66,.8)" style-active="transform:scale(.975)">
+                  <span>{{home.startLabel}}</span><span style="font-size:24px;line-height:1">→</span>
+                </button>
+              </sc-if>
+              <sc-if value="{{home.restOpen}}">
+                <button onClick="{{home.logRest}}" style="position:relative;height:68px;border:0;border-radius:22px;background:#5fd38d;color:#06140c;font:700 18px 'IBM Plex Sans';cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:0 26px;box-shadow:0 18px 44px -14px rgba(95,211,141,.55);transition:transform .15s" style-active="transform:scale(.975)">
+                  <span>Log rest day</span><span style="font-size:22px;line-height:1">✓</span>
+                </button>
+              </sc-if>
+              <sc-if value="{{home.restDone}}">
+                <div style="position:relative;padding:16px 18px;border-radius:18px;background:rgba(95,211,141,.1);border:1px solid rgba(95,211,141,.3);color:#cfeedd;font-weight:500">Rest logged. {{home.after}} is up next.</div>
+              </sc-if>
+              <div style="position:relative;display:flex;flex-direction:column;gap:10px">
+                <div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;padding:4px;border-radius:18px;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.06)">
+                  <sc-for list="{{home.picks}}" as="p" hint-placeholder-count="4">
+                    <button onClick="{{p.go}}" style="position:relative;border:0;border-radius:14px;padding:12px 4px;cursor:pointer;font:700 17px/1 'Barlow Condensed';letter-spacing:.06em;text-transform:uppercase;background:{{p.bg}};color:{{p.fg}};transition:background .3s cubic-bezier(.2,.8,.2,1),color .3s">{{p.label}}<sc-if value="{{p.rec}}"><span style="position:absolute;top:6px;right:7px;width:6px;height:6px;border-radius:50%;background:#f5c542"></span></sc-if></button>
+                  </sc-for>
+                </div>
+                <div style="font-size:13px;color:#8e949b;text-wrap:pretty">{{home.recNote}}</div>
+              </div>
+            </section>
+
+            <div style="display:flex;flex-direction:column;gap:18px">
+              <section style="border-radius:26px;padding:22px;background:#131519;border:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;gap:18px;animation:rise .6s .12s cubic-bezier(.2,.8,.2,1) both">
+                <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:12px">
+                  <div>
+                    <div style="font:600 11px/1 'IBM Plex Sans';letter-spacing:.16em;text-transform:uppercase;color:#8e949b">Day streak</div>
+                    <div style="display:flex;align-items:baseline;gap:8px;margin-top:8px"><span style="font:800 68px/.85 'Barlow Condensed'">{{streak.cur}}</span><span style="color:#8e949b">{{streak.unit}}</span></div>
+                  </div>
+                  <div style="text-align:right">
+                    <div style="font:600 11px/1 'IBM Plex Sans';letter-spacing:.16em;text-transform:uppercase;color:#8e949b">Best</div>
+                    <div style="font:700 28px/1 'Barlow Condensed';margin-top:8px">{{streak.best}}</div>
+                  </div>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px">
+                  <sc-for list="{{streak.week}}" as="d" hint-placeholder-count="7">
+                    <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+                      <span style="font:600 11px/1 'IBM Plex Sans';color:#6b7178">{{d.l}}</span>
+                      <span style="width:100%;max-width:42px;aspect-ratio:1;border-radius:50%;display:grid;place-items:center;font:700 15px/1 'Barlow Condensed';background:{{d.bg}};color:{{d.fg}};box-shadow:{{d.ring}};transition:all .4s cubic-bezier(.2,.8,.2,1)">{{d.n}}</span>
+                    </div>
+                  </sc-for>
+                </div>
+                <div style="font-size:13px;color:#a3a9b0">{{streak.msg}}</div>
+              </section>
+
+              <sc-if value="{{home.training}}" hint-placeholder-val="{{true}}">
+                <section style="border-radius:26px;padding:22px;background:#131519;border:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;gap:6px;animation:rise .6s .18s cubic-bezier(.2,.8,.2,1) both">
+                  <div style="display:flex;justify-content:space-between;align-items:center;padding-bottom:6px">
+                    <span style="font:600 11px/1 'IBM Plex Sans';letter-spacing:.16em;text-transform:uppercase;color:#8e949b">Today’s top sets</span>
+                    <span style="font-size:12px;color:#6f757c">Set 1 target</span>
+                  </div>
+                  <sc-for list="{{home.targets}}" as="t" hint-placeholder-count="6">
+                    <div style="display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:12px;align-items:center;padding:11px 0;border-top:1px solid rgba(255,255,255,.06)">
+                      <div style="min-width:0"><div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{t.name}}</div><div style="font:12px 'IBM Plex Mono';color:#7a8088">{{t.scheme}}</div></div>
+                      <div style="font:700 21px/1 'Barlow Condensed';font-variant-numeric:tabular-nums">{{t.w}}</div>
+                      <span style="font:700 10px/1 'IBM Plex Sans';letter-spacing:.1em;text-transform:uppercase;padding:6px 8px;border-radius:999px;background:{{t.tagBg}};color:{{t.tagFg}};min-width:54px;text-align:center">{{t.tag}}</span>
+                    </div>
+                  </sc-for>
+                </section>
+              </sc-if>
+
+              <sc-if value="{{home.hasClose}}">
+                <section style="border-radius:26px;padding:22px;background:#131519;border:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;gap:14px;animation:rise .6s .24s cubic-bezier(.2,.8,.2,1) both">
+                  <span style="font:600 11px/1 'IBM Plex Sans';letter-spacing:.16em;text-transform:uppercase;color:#8e949b">Almost unlocked</span>
+                  <sc-for list="{{home.close}}" as="c" hint-placeholder-count="2">
+                    <div style="display:flex;flex-direction:column;gap:8px">
+                      <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline"><span style="font-weight:600">{{c.name}}</span><span style="font:700 18px/1 'Barlow Condensed';color:#f5c542">→ {{c.unlocks}}</span></div>
+                      <div style="height:6px;border-radius:999px;background:rgba(255,255,255,.06);overflow:hidden"><div style="height:100%;width:{{c.pct}};background:#f5c542;border-radius:999px;transition:width .8s cubic-bezier(.2,.8,.2,1)"></div></div>
+                      <div style="display:flex;justify-content:space-between;font-size:12px;color:#8e949b"><span style="font-family:'IBM Plex Mono'">{{c.last}}</span><span>{{c.need}}</span></div>
+                    </div>
+                  </sc-for>
+                </section>
+              </sc-if>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- WORKOUT -->
+      <sc-if value="{{isWorkout}}" hint-placeholder-val="{{false}}">
+        <div style="display:flex;flex-direction:column;gap:16px">
+          <div style="position:sticky;top:0;z-index:10;margin:0 -16px;padding:12px 16px 14px;background:linear-gradient(#0a0b0d 72%, rgba(10,11,13,0));display:flex;flex-direction:column;gap:10px">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+              <span style="font:600 11px/1 'IBM Plex Sans';letter-spacing:.16em;text-transform:uppercase;color:#a3a9b0">{{wk.title}}</span>
+              <button onClick="{{wk.askEnd}}" style="height:32px;padding:0 14px;border-radius:999px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.03);color:#c9cdd2;font:600 12px 'IBM Plex Sans';cursor:pointer">End</button>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px">
+              <div style="flex:1;height:6px;border-radius:999px;background:rgba(255,255,255,.07);overflow:hidden"><div style="height:100%;width:{{wk.pct}};background:linear-gradient(90deg,#e9b23a,#ffd96b);border-radius:999px;transition:width .7s cubic-bezier(.2,.8,.2,1);box-shadow:0 0 14px rgba(245,197,66,.55)"></div></div>
+              <span style="font:500 12px 'IBM Plex Mono';color:#a3a9b0;font-variant-numeric:tabular-nums">{{wk.pctTxt}}</span>
+            </div>
+          </div>
+
+          <div style="display:flex;gap:8px;overflow-x:auto;margin:-6px -16px 0;padding:2px 16px 6px;scroll-snap-type:x proximity;scrollbar-width:none">
+            <sc-for list="{{wk.strip}}" as="s" hint-placeholder-count="6">
+              <button onClick="{{s.go}}" style="flex:none;scroll-snap-align:start;display:flex;align-items:center;gap:10px;padding:7px 14px 7px 7px;border-radius:15px;border:1px solid {{s.border}};background:{{s.bg}};color:{{s.fg}};cursor:pointer;transition:background .35s,border-color .35s,color .35s,transform .15s" style-active="transform:scale(.96)">
+                <span style="width:30px;height:30px;flex:none;border-radius:10px;display:grid;place-items:center;font:700 15px/1 'Barlow Condensed';background:{{s.numBg}}">{{s.n}}</span>
+                <span style="display:flex;flex-direction:column;align-items:flex-start;min-width:0"><span style="font:600 13px/1.2 'IBM Plex Sans';white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:150px">{{s.name}}</span><span style="font:500 11px/1.3 'IBM Plex Mono';color:{{s.subFg}}">{{s.sub}}</span></span>
+              </button>
+            </sc-for>
+          </div>
+
+          <sc-if value="{{wk.isDone}}">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,400px),1fr));gap:18px;align-items:start">
+              <section style="position:relative;overflow:hidden;border-radius:32px;padding:clamp(24px,3vw,34px);background:linear-gradient(165deg,rgba(245,197,66,.17),#121418 62%);border:1px solid rgba(245,197,66,.4);display:flex;flex-direction:column;gap:18px;animation:rise .55s cubic-bezier(.2,.8,.2,1) both">
+                <span style="font:700 11px/1 'IBM Plex Sans';letter-spacing:.16em;text-transform:uppercase;color:#f5c542">Every set logged</span>
+                <div style="font:800 clamp(60px,12vw,100px)/.84 'Barlow Condensed';text-transform:uppercase">That’s<br>the work.</div>
+                <p style="margin:0;color:#a3a9b0">Finish to save it and see what you beat. {{wk.nextDay}} is up next.</p>
+                <button onClick="{{wk.finish}}" style="height:68px;border:0;border-radius:22px;background:#f5c542;color:#191204;font:700 18px 'IBM Plex Sans';cursor:pointer;display:flex;align-items:center;justify-content:space-between;padding:0 26px;box-shadow:0 18px 44px -14px rgba(245,197,66,.65);transition:transform .15s" style-active="transform:scale(.975)"><span>Finish &amp; see recap</span><span style="font-size:24px;line-height:1">→</span></button>
+              </section>
+              <section style="border-radius:26px;padding:22px;background:#131519;border:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;gap:4px;animation:rise .55s .1s both">
+                <span style="font:600 11px/1 'IBM Plex Sans';letter-spacing:.16em;text-transform:uppercase;color:#8e949b;padding-bottom:8px">Logged today</span>
+                <sc-for list="{{wk.logged}}" as="l" hint-placeholder-count="6">
+                  <div style="display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid rgba(255,255,255,.06);flex-wrap:wrap"><span style="font-weight:600">{{l.name}}</span><span style="font:13px 'IBM Plex Mono';color:#a3a9b0">{{l.sets}}</span></div>
+                </sc-for>
+              </section>
+            </div>
+          </sc-if>
+
+          <sc-if value="{{wk.active}}" hint-placeholder-val="{{true}}">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:20px;align-items:start">
+              <div style="display:flex;flex-direction:column;gap:16px;min-width:0">
+                <div style="display:flex;flex-direction:column;gap:12px">
+                  <h1 style="margin:0;font:700 clamp(38px,6vw,56px)/.92 'Barlow Condensed';text-transform:uppercase;letter-spacing:.005em;text-wrap:balance">{{wk.exName}}</h1>
+                  <div style="display:flex;flex-wrap:wrap;gap:6px">
+                    <sc-for list="{{wk.meta}}" as="m" hint-placeholder-count="3"><span style="font:600 12px/1 'IBM Plex Sans';padding:7px 11px;border-radius:999px;background:#15171a;border:1px solid rgba(255,255,255,.07);color:#c9cdd2">{{m.t}}</span></sc-for>
+                  </div>
+                  <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                    <sc-for list="{{wk.dots}}" as="d" hint-placeholder-count="5"><span style="min-width:36px;height:36px;padding:0 8px;border-radius:12px;display:grid;place-items:center;font:700 16px/1 'Barlow Condensed';background:{{d.bg}};color:{{d.fg}};box-shadow:{{d.ring}};transition:all .4s cubic-bezier(.2,.8,.2,1)">{{d.t}}</span></sc-for>
+                  </div>
+                </div>
+
+                <sc-if value="{{wk.hasNotice}}">
+                  <div style="padding:13px 16px;border-radius:16px;background:rgba(95,211,141,.09);border:1px solid rgba(95,211,141,.3);color:#cfeedd;font-weight:500;animation:rise .4s both">{{wk.notice}}</div>
+                </sc-if>
+
+                <sc-if value="{{wk.hasFlash}}">
+                  <div style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:18px;background:#131519;border:1px solid {{wk.flash.border}};animation:rise .45s cubic-bezier(.2,.8,.2,1) both">
+                    <span style="width:30px;height:30px;flex:none;border-radius:50%;background:#5fd38d;color:#06140c;display:grid;place-items:center;font:800 15px/1 'IBM Plex Sans';animation:pop .5s both">✓</span>
+                    <div style="display:flex;flex-direction:column;min-width:0"><span style="font:700 12px/1.3 'IBM Plex Sans';letter-spacing:.08em;text-transform:uppercase">{{wk.flash.title}}</span><span style="font-size:13px;color:#a3a9b0">{{wk.flash.cmp}}</span></div>
+                    <sc-if value="{{wk.flash.hasPr}}"><span style="margin-left:auto;flex:none;font:700 10px/1 'IBM Plex Sans';letter-spacing:.12em;text-transform:uppercase;padding:7px 10px;border-radius:999px;background:#f5c542;color:#191204;animation:pop .5s .15s both">{{wk.flash.pr}}</span></sc-if>
+                  </div>
+                </sc-if>
+
+                <sc-if value="{{wk.hasTop}}">
+                  <section style="border-radius:24px;padding:20px;background:{{wk.top.bg}};border:1px solid {{wk.top.border}};display:flex;flex-direction:column;gap:12px;animation:rise .5s cubic-bezier(.2,.8,.2,1) both">
+                    <div style="font:600 12px/1.3 'IBM Plex Sans';letter-spacing:.06em;color:#a3a9b0"><span style="color:#5fd38d">✓</span> {{wk.top.line}}</div>
+                    <div style="font:800 30px/1 'Barlow Condensed';letter-spacing:.01em;text-transform:uppercase">{{wk.top.head}}</div>
+                    <sc-for list="{{wk.top.lines}}" as="l" hint-placeholder-count="2"><div style="font-size:14px;color:#c9cdd2">{{l.t}}</div></sc-for>
+                    <sc-if value="{{wk.top.showProg}}">
+                      <div style="display:flex;align-items:center;gap:12px"><div style="flex:1;height:8px;border-radius:999px;background:rgba(255,255,255,.07);overflow:hidden"><div style="height:100%;width:{{wk.top.progPct}};background:#f5c542;border-radius:999px;transition:width .8s cubic-bezier(.2,.8,.2,1)"></div></div><span style="font:500 12px 'IBM Plex Mono';color:#a3a9b0">{{wk.top.progTxt}}</span></div>
+                    </sc-if>
+                    <sc-if value="{{wk.top.unlocked}}">
+                      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 18px;border-radius:18px;background:#f5c542;color:#191204;box-shadow:0 16px 40px -14px rgba(245,197,66,.7);animation:pop .6s .2s both"><span style="font:700 12px/1.2 'IBM Plex Sans';letter-spacing:.12em;text-transform:uppercase">New weight unlocked</span><span style="font:800 34px/1 'Barlow Condensed'">{{wk.top.next}}</span></div>
+                    </sc-if>
+                    <sc-if value="{{wk.top.notUnlocked}}"><div style="font-size:14px">Next time: <strong>{{wk.top.next}}</strong>{{wk.top.nextNote}}</div></sc-if>
+                    <sc-if value="{{wk.top.hasRec}}"><div style="font:700 12px/1.3 'IBM Plex Sans';letter-spacing:.08em;text-transform:uppercase;color:#f5c542">{{wk.top.rec}}</div></sc-if>
+                  </section>
+                </sc-if>
+
+                <sc-if value="{{wk.isStart}}">
+                  <section style="border-radius:30px;padding:clamp(20px,3vw,28px);background:linear-gradient(170deg,#1b1e23,#121418);border:1px solid rgba(124,199,255,.3);display:flex;flex-direction:column;gap:20px;animation:rise .5s cubic-bezier(.2,.8,.2,1) both">
+                    <div>
+                      <span style="font:700 11px/1 'IBM Plex Sans';letter-spacing:.16em;text-transform:uppercase;color:#7cc7ff">First time on this lift</span>
+                      <p style="margin:10px 0 0;font-weight:600;font-size:17px">Pick a starting top-set weight. Warm-up and back-off sets are calculated from it.</p>
+                    </div>
+                    <div style="display:grid;grid-template-columns:64px minmax(0,1fr) 64px;align-items:center;gap:10px">
+                      <button onClick="{{wk.minus}}" aria-label="Decrease weight" style="height:64px;border-radius:20px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#f1efe9;font:400 32px/1 'IBM Plex Sans';cursor:pointer;transition:transform .12s,background .2s" style-active="transform:scale(.9);background:rgba(255,255,255,.1)">−</button>
+                      <div style="display:flex;align-items:baseline;justify-content:center;gap:6px;min-width:0"><input value="{{wk.wStr}}" onChange="{{wk.onW}}" inputmode="decimal" aria-label="Starting weight in kg" style="width:100%;max-width:230px;min-width:0;background:transparent;border:0;outline:none;color:#f1efe9;text-align:center;font:800 clamp(72px,14vw,104px)/.9 'Barlow Condensed';font-variant-numeric:tabular-nums;padding:0"><span style="font:600 26px 'Barlow Condensed';color:#8e949b">kg</span></div>
+                      <button onClick="{{wk.plus}}" aria-label="Increase weight" style="height:64px;border-radius:20px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#f1efe9;font:400 32px/1 'IBM Plex Sans';cursor:pointer;transition:transform .12s,background .2s" style-active="transform:scale(.9);background:rgba(255,255,255,.1)">+</button>
+                    </div>
+                    <button onClick="{{wk.useStart}}" style="height:64px;border:0;border-radius:20px;background:#f5c542;color:#191204;font:700 17px 'IBM Plex Sans';cursor:pointer;box-shadow:0 14px 40px -12px rgba(245,197,66,.6);transition:transform .15s" style-active="transform:scale(.975)">Use this weight</button>
+                  </section>
+                </sc-if>
+
+                <sc-if value="{{wk.isSet}}" hint-placeholder-val="{{true}}">
+                  <section style="position:relative;overflow:hidden;border-radius:30px;padding:clamp(20px,3vw,28px);background:linear-gradient(170deg,#1c1f24,#121418);border:1px solid rgba(245,197,66,.3);box-shadow:0 40px 80px -40px rgba(0,0,0,.95),0 0 60px -30px rgba(245,197,66,.25);display:flex;flex-direction:column;gap:20px;animation:rise .5s cubic-bezier(.2,.8,.2,1) both">
+                    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px">
+                      <span style="font:800 32px/1 'Barlow Condensed';letter-spacing:.04em;text-transform:uppercase;color:#f5c542">{{wk.setLabel}}</span>
+                      <span style="font:600 11px/1 'IBM Plex Sans';letter-spacing:.14em;text-transform:uppercase;color:#8e949b">{{wk.setSub}}</span>
+                    </div>
+                    <div style="display:grid;grid-template-columns:64px minmax(0,1fr) 64px;align-items:center;gap:10px">
+                      <button onClick="{{wk.minus}}" aria-label="Decrease weight" style="height:64px;border-radius:20px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#f1efe9;font:400 32px/1 'IBM Plex Sans';cursor:pointer;transition:transform .12s,background .2s" style-active="transform:scale(.9);background:rgba(255,255,255,.1)">−</button>
+                      <div style="display:flex;align-items:baseline;justify-content:center;gap:6px;min-width:0"><input value="{{wk.wStr}}" onChange="{{wk.onW}}" inputmode="decimal" aria-label="Weight in kg" style="width:100%;max-width:240px;min-width:0;background:transparent;border:0;outline:none;color:#f1efe9;text-align:center;font:800 clamp(76px,14vw,108px)/.9 'Barlow Condensed';font-variant-numeric:tabular-nums;padding:0"><span style="font:600 26px 'Barlow Condensed';color:#8e949b">kg</span></div>
+                      <button onClick="{{wk.plus}}" aria-label="Increase weight" style="height:64px;border-radius:20px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#f1efe9;font:400 32px/1 'IBM Plex Sans';cursor:pointer;transition:transform .12s,background .2s" style-active="transform:scale(.9);background:rgba(255,255,255,.1)">+</button>
+                    </div>
+                    <div style="display:flex;justify-content:center;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:#a3a9b0;margin-top:-8px">
+                      <span>Target {{wk.target}}</span>
+                      <sc-if value="{{wk.hasPrev}}"><span style="color:#4a4f56">·</span><span>Last time <span style="font-family:'IBM Plex Mono'">{{wk.prev}}</span></span></sc-if>
+                      <sc-if value="{{wk.isOff}}"><button onClick="{{wk.resetW}}" style="background:none;border:0;padding:0 0 0 4px;color:#f5c542;font:600 13px 'IBM Plex Sans';cursor:pointer">Reset to {{wk.recWTxt}}</button></sc-if>
+                    </div>
+                    <sc-if value="{{wk.hasProg}}">
+                      <div style="display:flex;flex-direction:column;gap:8px;padding:14px 16px;border-radius:18px;background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.05)">
+                        <div style="display:flex;justify-content:space-between;align-items:center"><span style="font:600 11px/1 'IBM Plex Sans';letter-spacing:.14em;text-transform:uppercase;color:#8e949b">Progress to next weight</span><span style="font:500 12px 'IBM Plex Mono';color:#c9cdd2">{{wk.progTxt}}</span></div>
+                        <div style="height:8px;border-radius:999px;background:rgba(255,255,255,.07);overflow:hidden"><div style="height:100%;width:{{wk.progPct}};background:linear-gradient(90deg,#e9b23a,#ffd96b);border-radius:999px;transition:width .8s cubic-bezier(.2,.8,.2,1)"></div></div>
+                        <div style="font-size:12px;color:#8e949b">{{wk.progNote}}</div>
+                      </div>
+                    </sc-if>
+                    <div style="display:flex;flex-direction:column;gap:10px">
+                      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span style="font:600 11px/1 'IBM Plex Sans';letter-spacing:.14em;text-transform:uppercase;color:#8e949b">Reps done</span><span style="font-size:12px;color:#6f757c">{{wk.repHint}}</span></div>
+                      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(50px,1fr));gap:6px">
+                        <sc-for list="{{wk.reps}}" as="r" hint-placeholder-count="10">
+                          <button onClick="{{r.go}}" style="height:54px;border-radius:15px;border:1px solid {{r.border}};background:{{r.bg}};color:{{r.fg}};font:700 23px/1 'Barlow Condensed';font-variant-numeric:tabular-nums;cursor:pointer;transform:{{r.tf}};box-shadow:{{r.glow}};transition:transform .25s cubic-bezier(.3,1.6,.5,1),background .2s,color .2s,box-shadow .25s">{{r.n}}</button>
+                        </sc-for>
+                      </div>
+                    </div>
+                    <button onClick="{{wk.log}}" disabled="{{wk.cantLog}}" style="height:68px;border:0;border-radius:22px;background:{{wk.btnBg}};color:{{wk.btnFg}};font:700 17px 'IBM Plex Sans';cursor:pointer;box-shadow:{{wk.btnShadow}};transition:background .3s,color .3s,box-shadow .3s,transform .15s" style-active="transform:scale(.975)">{{wk.btnLabel}}</button>
+                    <div style="display:flex;flex-direction:column;gap:8px">
+                      <button onClick="{{wk.toggleWhy}}" style="align-self:flex-start;background:none;border:0;padding:0;color:#8e949b;font:600 13px 'IBM Plex Sans';cursor:pointer">{{wk.whyLabel}}</button>
+                      <sc-if value="{{wk.whyOpen}}"><div style="font-size:13px;color:#a3a9b0;display:flex;flex-direction:column;gap:6px;animation:fade .3s both;text-wrap:pretty"><p style="margin:0">{{wk.why}}</p><p style="margin:0">{{wk.restTxt}}</p></div></sc-if>
+                    </div>
+                  </section>
+                </sc-if>
+
+                <sc-if value="{{wk.isSummary}}">
+                  <section style="border-radius:30px;padding:clamp(20px,3vw,28px);background:linear-gradient(165deg,rgba(95,211,141,.13),#121418 60%);border:1px solid rgba(95,211,141,.32);display:flex;flex-direction:column;gap:16px;animation:rise .5s cubic-bezier(.2,.8,.2,1) both">
+                    <div style="display:flex;align-items:center;gap:14px">
+                      <span style="width:48px;height:48px;flex:none;border-radius:50%;background:#5fd38d;color:#06140c;display:grid;place-items:center;font:800 22px/1 'IBM Plex Sans';box-shadow:0 0 30px rgba(95,211,141,.45);animation:pop .55s both">✓</span>
+                      <div style="min-width:0"><div style="font:600 11px/1 'IBM Plex Sans';letter-spacing:.16em;text-transform:uppercase;color:#5fd38d">Exercise complete</div><div style="margin-top:6px;font:700 26px/1 'Barlow Condensed';text-transform:uppercase">{{wk.sum.name}}</div></div>
+                    </div>
+                    <div style="display:flex;flex-wrap:wrap;gap:8px">
+                      <sc-for list="{{wk.sum.sets}}" as="s" hint-placeholder-count="4"><span style="font:600 14px 'IBM Plex Mono';padding:8px 12px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.06)">{{s.t}}</span></sc-for>
+                    </div>
+                    <sc-if value="{{wk.sum.first}}"><p style="margin:0;color:#a3a9b0">First time logged — this is your baseline. Beat it next time.</p></sc-if>
+                    <sc-if value="{{wk.sum.hasGains}}">
+                      <div style="display:flex;flex-direction:column;gap:4px"><span style="font:600 11px/1 'IBM Plex Sans';letter-spacing:.14em;text-transform:uppercase;color:#8e949b;padding-bottom:4px">Beat last time</span><sc-for list="{{wk.sum.gains}}" as="g"><span style="color:#5fd38d;font-weight:600">{{g.t}}</span></sc-for></div>
+                    </sc-if>
+                    <sc-if value="{{wk.sum.noGains}}"><p style="margin:0;color:#a3a9b0">No set beat last time today. Next session is your shot.</p></sc-if>
+                    <sc-if value="{{wk.sum.hasNext}}"><div style="display:flex;justify-content:space-between;gap:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.07);flex-wrap:wrap"><span style="color:#8e949b">Next time</span><span style="font-weight:600">{{wk.sum.nextTime}}</span></div></sc-if>
+                    <sc-if value="{{wk.sum.hasNextEx}}"><div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><span style="color:#8e949b">Up next</span><span style="font-weight:600">{{wk.sum.nextEx}}</span></div></sc-if>
+                    <button onClick="{{wk.sum.go}}" style="height:64px;border:0;border-radius:20px;background:#f5c542;color:#191204;font:700 17px 'IBM Plex Sans';cursor:pointer;box-shadow:0 14px 40px -12px rgba(245,197,66,.6);transition:transform .15s" style-active="transform:scale(.975)">{{wk.sum.cont}}</button>
+                  </section>
+                </sc-if>
+
+                <sc-if value="{{wk.isExDone}}">
+                  <section style="border-radius:26px;padding:22px;background:#131519;border:1px solid rgba(95,211,141,.3);display:flex;flex-direction:column;gap:14px;animation:rise .45s both">
+                    <span style="font:600 11px/1 'IBM Plex Sans';letter-spacing:.16em;text-transform:uppercase;color:#5fd38d">Exercise complete</span>
+                    <p style="margin:0">All sets for this exercise are logged. Edit any of them in the plan.</p>
+                    <button onClick="{{wk.exDoneGo}}" style="height:58px;border:0;border-radius:18px;background:#f5c542;color:#191204;font:700 16px 'IBM Plex Sans';cursor:pointer">{{wk.exDoneLabel}}</button>
+                  </section>
+                </sc-if>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:14px;min-width:0">
+                <section style="border-radius:26px;padding:20px;background:#131519;border:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;gap:10px;animation:rise .55s .08s cubic-bezier(.2,.8,.2,1) both">
+                  <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap"><span style="font:600 11px/1 'IBM Plex Sans';letter-spacing:.16em;text-transform:uppercase;color:#8e949b">Plan</span><span style="font:11px 'IBM Plex Mono';color:#6f757c">{{wk.system}}</span></div>
+                  <div style="display:flex;flex-direction:column">
+                    <sc-for list="{{wk.plan}}" as="p" hint-placeholder-count="5">
+                      <div style="padding:11px 12px;margin:0 -12px;border-radius:14px;background:{{p.bg}};transition:background .35s">
+                        <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 12px;align-items:baseline">
+                          <span style="font-weight:600;color:{{p.lblFg}};transition:color .35s">{{p.label}}</span>
+                          <span style="font:600 14px 'IBM Plex Mono';font-variant-numeric:tabular-nums">{{p.target}}</span>
+                          <span style="font:11px/1.4 'IBM Plex Mono';color:#6f757c;overflow-wrap:anywhere">{{p.calc}}</span>
+                          <sc-if value="{{p.hasActual}}"><button onClick="{{p.edit}}" style="justify-self:end;background:none;border:0;color:#5fd38d;font:600 12px 'IBM Plex Mono';cursor:pointer;padding:0;white-space:nowrap">✓ {{p.actual}} <span style="color:#6f757c">edit</span></button></sc-if>
+                        </div>
+                        <sc-if value="{{p.editing}}">
+                          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding-top:10px;animation:fade .25s both">
+                            <input value="{{editW}}" onChange="{{onEditW}}" inputmode="decimal" aria-label="Weight in kg" style="width:84px;height:42px;padding:0 10px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:#0e1013;color:#f1efe9;font:600 16px 'IBM Plex Mono'">
+                            <span style="color:#8e949b;font-size:13px">kg ×</span>
+                            <input value="{{editR}}" onChange="{{onEditR}}" inputmode="numeric" aria-label="Reps" style="width:64px;height:42px;padding:0 10px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:#0e1013;color:#f1efe9;font:600 16px 'IBM Plex Mono'">
+                            <button onClick="{{saveEdit}}" style="height:42px;padding:0 16px;border:0;border-radius:12px;background:#f5c542;color:#191204;font:700 14px 'IBM Plex Sans';cursor:pointer">Save</button>
+                            <button onClick="{{cancelEdit}}" style="height:42px;padding:0 8px;border:0;background:none;color:#8e949b;font:600 14px 'IBM Plex Sans';cursor:pointer">Cancel</button>
+                          </div>
+                        </sc-if>
+                      </div>
+                    </sc-for>
+                  </div>
+                  <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.06);flex-wrap:wrap">
+                    <span style="font-size:13px;color:#8e949b">Weight increment</span>
+                    <span style="display:flex;align-items:center;gap:8px"><input value="{{wk.incStr}}" onChange="{{wk.onInc}}" onBlur="{{wk.commitInc}}" inputmode="decimal" aria-label="Increment in kg" style="width:72px;height:38px;padding:0 10px;border-radius:11px;border:1px solid rgba(255,255,255,.12);background:#0e1013;color:#f1efe9;font:600 16px 'IBM Plex Mono';text-align:center"><span style="font-size:13px;color:#8e949b">kg</span></span>
+                  </div>
+                </section>
+                <div style="display:flex;justify-content:space-between;gap:10px;padding:0 4px">
+                  <button onClick="{{wk.askEnd}}" style="background:none;border:0;padding:6px 0;color:#c9cdd2;font:600 13px 'IBM Plex Sans';cursor:pointer">End early &amp; save</button>
+                  <button onClick="{{wk.askDiscard}}" style="background:none;border:0;padding:6px 0;color:#ff8a65;font:600 13px 'IBM Plex Sans';cursor:pointer">Discard workout</button>
+                </div>
+              </div>
+            </div>
+          </sc-if>
+        </div>
+      </sc-if>
+
+      <!-- PROGRESS -->
+      <sc-if value="{{isDash}}" hint-placeholder-val="{{false}}">
+        <div style="display:flex;flex-direction:column;gap:20px">
+          <header style="animation:rise .5s both">
+            <div style="font:600 11px/1 'IBM Plex Sans';letter-spacing:.16em;text-transform:uppercase;color:#8e949b">Your progress</div>
+            <h1 style="margin:10px 0 0;font:700 clamp(36px,5vw,48px)/1 'Barlow Condensed'">Every rep, counted.</h1>
+          </header>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px">
+            <sc-for list="{{dash.stats}}" as="s" hint-placeholder-count="4">
+              <div style="padding:18px;border-radius:22px;background:#131519;border:1px solid rgba(255,255,255,.07);animation:rise .55s {{s.d}} cubic-bezier(.2,.8,.2,1) both">
+                <div style="font:800 44px/.9 'Barlow Condensed';font-variant-numeric:tabular-nums;color:{{s.fg}}">{{s.n}}</div>
+                <div style="margin-top:8px;font-size:12px;color:#8e949b">{{s.l}}</div>
+              </div>
+            </sc-for>
+          </div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,400px),1fr));gap:18px;align-items:start">
+            <section style="border-radius:26px;padding:22px;background:#131519;border:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;gap:16px;animation:rise .6s .1s both">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+                <h2 style="margin:0;font:700 26px/1 'Barlow Condensed';text-transform:uppercase;letter-spacing:.02em">{{dash.month}}</h2>
+                <div style="display:flex;gap:4px">
+                  <button onClick="{{dash.prev}}" aria-label="Previous month" style="width:36px;height:36px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);color:#f1efe9;font:600 16px/1 'IBM Plex Sans';cursor:pointer">‹</button>
+                  <button onClick="{{dash.today}}" style="height:36px;padding:0 12px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);color:#c9cdd2;font:600 12px 'IBM Plex Sans';cursor:pointer">Today</button>
+                  <button onClick="{{dash.next}}" aria-label="Next month" style="width:36px;height:36px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);color:#f1efe9;font:600 16px/1 'IBM Plex Sans';cursor:pointer">›</button>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px">
+                <sc-for list="{{dash.wd}}" as="w" hint-placeholder-count="7"><div style="text-align:center;font:600 11px/1 'IBM Plex Sans';color:#6b7178;padding-bottom:4px">{{w.t}}</div></sc-for>
+                <sc-for list="{{dash.cells}}" as="c" hint-placeholder-count="35"><div title="{{c.title}}" style="aspect-ratio:1;border-radius:11px;display:grid;place-items:center;font:700 15px/1 'Barlow Condensed';background:{{c.bg}};color:{{c.fg}};box-shadow:{{c.ring}};transition:background .3s">{{c.n}}</div></sc-for>
+              </div>
+              <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:#8e949b">
+                <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:#f5c542"></span>Training</span>
+                <span style="display:flex;align-items:center;gap:6px"><span style="width:10px;height:10px;border-radius:3px;background:rgba(95,211,141,.5)"></span>Rest</span>
+                <span style="margin-left:auto">{{dash.monthNote}}</span>
+              </div>
+            </section>
+            <div style="display:flex;flex-direction:column;gap:18px">
+              <sc-if value="{{dash.hasClose}}">
+                <section style="border-radius:26px;padding:22px;background:#131519;border:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;gap:14px;animation:rise .6s .15s both">
+                  <span style="font:600 11px/1 'IBM Plex Sans';letter-spacing:.16em;text-transform:uppercase;color:#8e949b">Almost unlocked</span>
+                  <sc-for list="{{dash.close}}" as="c" hint-placeholder-count="3">
+                    <div style="display:flex;flex-direction:column;gap:8px">
+                      <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline"><span style="font-weight:600">{{c.name}}</span><span style="font:700 18px/1 'Barlow Condensed';color:#f5c542">→ {{c.unlocks}}</span></div>
+                      <div style="height:6px;border-radius:999px;background:rgba(255,255,255,.06);overflow:hidden"><div style="height:100%;width:{{c.pct}};background:#f5c542;border-radius:999px"></div></div>
+                      <div style="display:flex;justify-content:space-between;font-size:12px;color:#8e949b"><span style="font-family:'IBM Plex Mono'">{{c.last}}</span><span>{{c.need}}</span></div>
+                    </div>
+                  </sc-for>
+                </section>
+              </sc-if>
+              <section style="border-radius:26px;padding:22px;background:#131519;border:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;animation:rise .6s .2s both">
+                <span style="font:600 11px/1 'IBM Plex Sans';letter-spacing:.16em;text-transform:uppercase;color:#8e949b;padding-bottom:10px">Recent wins</span>
+                <sc-if value="{{dash.noFeed}}"><p style="margin:0;color:#8e949b;text-wrap:pretty">Wins show up here when you beat a previous top set — more reps, a heavier weight, or a new weight unlocked.</p></sc-if>
+                <sc-for list="{{dash.feed}}" as="f" hint-placeholder-count="4">
+                  <div style="display:grid;grid-template-columns:74px minmax(0,1fr);gap:12px;padding:12px 0;border-top:1px solid rgba(255,255,255,.06)">
+                    <span style="font:500 12px/1.6 'IBM Plex Mono';color:#8e949b">{{f.date}}</span>
+                    <div><div style="font-weight:600">{{f.title}}</div><div style="font-size:14px;color:#c9cdd2">{{f.line}}</div><div style="font-size:12px;color:#f5c542">{{f.sub}}</div></div>
+                  </div>
+                </sc-for>
+              </section>
+            </div>
+          </div>
+          <sc-for list="{{dash.groups}}" as="g" hint-placeholder-count="3">
+            <div style="display:flex;flex-direction:column;gap:10px">
+              <span style="font:700 22px/1 'Barlow Condensed';text-transform:uppercase;letter-spacing:.04em;padding:8px 2px 0">{{g.name}}</span>
+              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,340px),1fr));gap:10px;align-items:start">
+                <sc-for list="{{g.items}}" as="x" hint-placeholder-count="6">
+                  <div style="border-radius:20px;background:#131519;border:1px solid rgba(255,255,255,.07);overflow:hidden">
+                    <button onClick="{{x.toggle}}" style="width:100%;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:15px 18px;background:none;border:0;color:#f1efe9;cursor:pointer;text-align:left">
+                      <span style="min-width:0;display:flex;flex-direction:column"><span style="font-weight:600">{{x.name}}</span><span style="font:12px 'IBM Plex Mono';color:#8e949b">{{x.sub}}</span></span>
+                      <span style="display:flex;align-items:center;gap:12px;flex:none"><span style="font:600 13px 'IBM Plex Mono';color:{{x.trendFg}}">{{x.trend}}</span><span style="display:inline-block;color:#8e949b;font-size:18px;line-height:1;transform:rotate({{x.rot}});transition:transform .35s cubic-bezier(.2,.8,.2,1)">›</span></span>
+                    </button>
+                    <sc-if value="{{x.open}}">
+                      <div style="padding:0 18px 18px;display:flex;flex-direction:column;gap:14px;animation:fade .35s both">
+                        <sc-if value="{{x.noData}}"><p style="margin:0;color:#8e949b">No top set logged yet.</p></sc-if>
+                        <sc-if value="{{x.hasChart}}">
+                          <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px">
+                            <div><div style="font:600 10px/1.2 'IBM Plex Sans';letter-spacing:.12em;text-transform:uppercase;color:#8e949b">Latest Set 1</div><div style="margin-top:4px;font:700 22px/1.1 'Barlow Condensed'">{{x.latest}}</div></div>
+                            <div><div style="font:600 10px/1.2 'IBM Plex Sans';letter-spacing:.12em;text-transform:uppercase;color:#8e949b">Est. 1RM</div><div style="margin-top:4px;font:700 22px/1.1 'Barlow Condensed'">{{x.e1}} kg</div><div style="font:10px 'IBM Plex Mono';color:#6f757c">{{x.formula}}</div></div>
+                            <div><div style="font:600 10px/1.2 'IBM Plex Sans';letter-spacing:.12em;text-transform:uppercase;color:#8e949b">Strength</div><div style="margin-top:4px;font-size:12px;color:#c9cdd2">{{x.pct}}</div></div>
+                          </div>
+                          <div style="display:inline-flex;align-self:flex-start;gap:2px;padding:3px;border-radius:12px;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.06)">
+                            <button onClick="{{x.mW.go}}" style="border:0;border-radius:9px;padding:6px 10px;font:600 12px 'IBM Plex Sans';cursor:pointer;background:{{x.mW.bg}};color:{{x.mW.fg}};transition:all .25s">Set 1 weight</button>
+                            <button onClick="{{x.mE.go}}" style="border:0;border-radius:9px;padding:6px 10px;font:600 12px 'IBM Plex Sans';cursor:pointer;background:{{x.mE.bg}};color:{{x.mE.fg}};transition:all .25s">Est. 1RM</button>
+                          </div>
+                          <svg viewBox="0 0 320 150" style="width:100%;height:auto;display:block;overflow:visible;animation:fade .5s both">
+                            <path d="{{x.ch.grid}}" style="stroke:rgba(255,255,255,.06);stroke-width:1;fill:none"></path>
+                            <text x="{{x.ch.tx}}" y="{{x.ch.ty0}}" style="fill:#6f757c;font:10px 'IBM Plex Mono';text-anchor:end">{{x.ch.tl0}}</text>
+                            <text x="{{x.ch.tx}}" y="{{x.ch.ty1}}" style="fill:#6f757c;font:10px 'IBM Plex Mono';text-anchor:end">{{x.ch.tl1}}</text>
+                            <text x="{{x.ch.tx}}" y="{{x.ch.ty2}}" style="fill:#6f757c;font:10px 'IBM Plex Mono';text-anchor:end">{{x.ch.tl2}}</text>
+                            <path d="{{x.ch.area}}" style="fill:rgba(245,197,66,.1)"></path>
+                            <path d="{{x.ch.line}}" style="fill:none;stroke:#f5c542;stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round"></path>
+                            <path d="{{x.ch.dots}}" style="fill:#f5c542"></path>
+                            <circle cx="{{x.ch.ex}}" cy="{{x.ch.ey}}" r="5" style="fill:#f5c542;stroke:#131519;stroke-width:3"></circle>
+                            <text x="{{x.ch.lx}}" y="{{x.ch.ly}}" style="fill:#f1efe9;font:600 11px 'IBM Plex Mono';text-anchor:{{x.ch.anchor}}">{{x.ch.end}}</text>
+                            <text x="{{x.ch.x0}}" y="{{x.ch.by}}" style="fill:#6f757c;font:10px 'IBM Plex Mono';text-anchor:{{x.ch.xa0}}">{{x.ch.l0}}</text>
+                            <text x="{{x.ch.x1}}" y="{{x.ch.by}}" style="fill:#6f757c;font:10px 'IBM Plex Mono';text-anchor:end">{{x.ch.l1}}</text>
+                          </svg>
+                        </sc-if>
+                      </div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <!-- HISTORY -->
+      <sc-if value="{{isHist}}" hint-placeholder-val="{{false}}">
+        <div style="display:flex;flex-direction:column;gap:14px;max-width:760px;width:100%">
+          <header style="animation:rise .5s both;padding-bottom:6px">
+            <div style="font:600 11px/1 'IBM Plex Sans';letter-spacing:.16em;text-transform:uppercase;color:#8e949b">History</div>
+            <h1 style="margin:10px 0 0;font:700 clamp(36px,5vw,48px)/1 'Barlow Condensed'">The receipts.</h1>
+            <p style="margin:10px 0 0;color:#8e949b;font-size:14px;text-wrap:pretty">Tap a set to correct it. Changes to Set 1 update future recommendations.</p>
+          </header>
+          <sc-if value="{{hist.empty}}"><section style="border-radius:26px;padding:26px;background:#131519;border:1px solid rgba(255,255,255,.07);color:#8e949b">No saved workouts yet. Finish your first session and it lands here.</section></sc-if>
+          <sc-for list="{{hist.sessions}}" as="s" hint-placeholder-count="4">
+            <div style="border-radius:22px;background:#131519;border:1px solid rgba(255,255,255,.07);overflow:hidden;animation:rise .5s both">
+              <button onClick="{{s.toggle}}" style="width:100%;display:flex;align-items:center;gap:14px;padding:14px 18px 14px 14px;background:none;border:0;color:#f1efe9;cursor:pointer;text-align:left">
+                <span style="flex:none;width:56px;height:44px;border-radius:13px;display:grid;place-items:center;font:700 15px/1 'Barlow Condensed';letter-spacing:.06em;text-transform:uppercase;background:rgba(245,197,66,.12);color:#f5c542">{{s.day}}</span>
+                <span style="flex:1;min-width:0;display:flex;flex-direction:column"><span style="font-weight:600">{{s.title}}</span><span style="font:12px 'IBM Plex Mono';color:#8e949b">{{s.sub}}</span></span>
+                <span style="display:inline-block;color:#8e949b;font-size:18px;line-height:1;transform:rotate({{s.rot}});transition:transform .35s cubic-bezier(.2,.8,.2,1)">›</span>
+              </button>
+              <sc-if value="{{s.open}}">
+                <div style="padding:0 18px 16px;display:flex;flex-direction:column;gap:14px;animation:fade .3s both">
+                  <sc-for list="{{s.exs}}" as="x" hint-placeholder-count="3">
+                    <div>
+                      <div style="font-weight:600;padding-bottom:4px">{{x.name}}</div>
+                      <sc-for list="{{x.rows}}" as="row" hint-placeholder-count="4">
+                        <div style="border-top:1px solid rgba(255,255,255,.05)">
+                          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0">
+                            <span style="font-size:13px;color:#8e949b">{{row.label}}</span>
+                            <sc-if value="{{row.hasVal}}"><button onClick="{{row.edit}}" style="background:none;border:0;padding:0;color:#f1efe9;font:500 14px 'IBM Plex Mono';cursor:pointer">{{row.val}} <span style="color:#6f757c;font-size:12px">edit</span></button></sc-if>
+                            <sc-if value="{{row.noVal}}"><span style="color:#4a4f56">—</span></sc-if>
+                          </div>
+                          <sc-if value="{{row.editing}}">
+                            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding-bottom:10px;animation:fade .25s both">
+                              <input value="{{editW}}" onChange="{{onEditW}}" inputmode="decimal" aria-label="Weight in kg" style="width:84px;height:42px;padding:0 10px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:#0e1013;color:#f1efe9;font:600 16px 'IBM Plex Mono'">
+                              <span style="color:#8e949b;font-size:13px">kg ×</span>
+                              <input value="{{editR}}" onChange="{{onEditR}}" inputmode="numeric" aria-label="Reps" style="width:64px;height:42px;padding:0 10px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:#0e1013;color:#f1efe9;font:600 16px 'IBM Plex Mono'">
+                              <button onClick="{{saveEdit}}" style="height:42px;padding:0 16px;border:0;border-radius:12px;background:#f5c542;color:#191204;font:700 14px 'IBM Plex Sans';cursor:pointer">Save</button>
+                              <button onClick="{{cancelEdit}}" style="height:42px;padding:0 8px;border:0;background:none;color:#8e949b;font:600 14px 'IBM Plex Sans';cursor:pointer">Cancel</button>
+                            </div>
+                          </sc-if>
+                        </div>
+                      </sc-for>
+                    </div>
+                  </sc-for>
+                </div>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+      </sc-if>
+
+      <!-- SETTINGS -->
+      <sc-if value="{{isSettings}}" hint-placeholder-val="{{false}}">
+        <div style="display:flex;flex-direction:column;gap:18px">
+          <header style="animation:rise .5s both">
+            <div style="font:600 11px/1 'IBM Plex Sans';letter-spacing:.16em;text-transform:uppercase;color:#8e949b">Settings</div>
+            <h1 style="margin:10px 0 0;font:700 clamp(36px,5vw,48px)/1 'Barlow Condensed'">Tune the engine.</h1>
+          </header>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,400px),1fr));gap:18px;align-items:start">
+            <section style="border-radius:26px;padding:22px;background:#131519;border:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;gap:14px;animation:rise .55s both">
+              <h2 style="margin:0;font:700 24px/1 'Barlow Condensed';text-transform:uppercase;letter-spacing:.03em">Your data</h2>
+              <div style="display:flex;gap:12px;align-items:flex-start">
+                <span style="width:10px;height:10px;border-radius:50%;background:{{st.data.statusDot}};flex:none;margin-top:6px;box-shadow:0 0 0 4px rgba(255,255,255,.04)"></span>
+                <div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+                  <strong style="font:600 15px/1.3 'IBM Plex Sans'">{{st.data.statusTitle}}</strong>
+                  <span style="color:#8e949b;font-size:13px;text-wrap:pretty">{{st.data.statusBody}}</span>
+                </div>
+              </div>
+              <sc-if value="{{st.data.hasAccount}}"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;color:#c9cdd2">{{st.data.account}}<button onClick="{{st.data.signOut}}" style="height:34px;padding:0 12px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:transparent;color:#a3a9b0;font:600 13px 'IBM Plex Sans';cursor:pointer">Sign out</button></div></sc-if>
+              <sc-if value="{{st.data.canSignIn}}"><button onClick="{{st.data.signInOpen}}" style="height:48px;border:0;border-radius:14px;background:#f5c542;color:#191204;font:700 15px 'IBM Plex Sans';cursor:pointer">Sign in to sync</button></sc-if>
+              <sc-if value="{{st.data.canSync}}"><button onClick="{{st.data.syncNow}}" style="align-self:flex-start;height:36px;padding:0 14px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:transparent;color:#f1efe9;font:600 13px 'IBM Plex Sans';cursor:pointer">Sync now</button></sc-if>
+              <p style="margin:0;color:#8e949b;font-size:13px;text-wrap:pretty">Keep your own copy too: download a backup now and then, and you can restore it any time.</p>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px">
+                <button onClick="{{st.data.backup}}" style="height:52px;border:0;border-radius:16px;background:#f5c542;color:#191204;font:700 15px 'IBM Plex Sans';cursor:pointer;transition:transform .15s" style-active="transform:scale(.98)">Download backup</button>
+                <label style="height:52px;border-radius:16px;border:1px solid rgba(255,255,255,.12);display:flex;align-items:center;justify-content:center;font:600 15px 'IBM Plex Sans';color:#f1efe9;cursor:pointer;position:relative;overflow:hidden">Restore from backup<input type="file" accept="application/json,.json" onChange="{{st.data.onRestore}}" style="position:absolute;inset:0;opacity:0;cursor:pointer"></label>
+              </div>
+              <sc-if value="{{st.data.hasRestore}}">
+                <div style="padding:14px;border-radius:16px;background:#0e1013;border:1px solid rgba(245,197,66,.35);display:flex;flex-direction:column;gap:10px">
+                  <span style="font-size:14px;text-wrap:pretty">{{st.data.restoreText}}</span>
+                  <div style="display:flex;gap:8px;flex-wrap:wrap">
+                    <button onClick="{{st.data.restoreYes}}" style="height:44px;padding:0 18px;border:0;border-radius:12px;background:#f5c542;color:#191204;font:700 14px 'IBM Plex Sans';cursor:pointer">Restore</button>
+                    <button onClick="{{st.data.restoreNo}}" style="height:44px;padding:0 12px;border:0;background:none;color:#8e949b;font:600 14px 'IBM Plex Sans';cursor:pointer">Cancel</button>
+                  </div>
+                </div>
+              </sc-if>
+              <sc-if value="{{st.data.hasMsg}}"><p style="margin:0;font-size:13px;color:#c9cdd2">{{st.data.msg}}</p></sc-if>
+            </section>
+            <section style="border-radius:26px;padding:22px;background:#131519;border:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;gap:12px;animation:rise .55s .05s both">
+              <h2 style="margin:0;font:700 24px/1 'Barlow Condensed';text-transform:uppercase;letter-spacing:.03em">Body weight</h2>
+              <p style="margin:0;color:#8e949b;font-size:13px">Used only to match a body weight to each workout for strength comparisons.</p>
+              <div style="display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:10px">
+                <label style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:#8e949b">Date<input type="date" value="{{st.bwDate}}" onChange="{{st.onDate}}" style="height:48px;padding:0 12px;border-radius:14px;border:1px solid rgba(255,255,255,.1);background:#0e1013;color:#f1efe9;font:500 16px 'IBM Plex Sans';min-width:0;width:100%"></label>
+                <label style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:#8e949b">Weight (kg)<input value="{{st.bwW}}" onChange="{{st.onW}}" inputmode="decimal" placeholder="e.g. 81.8" style="height:48px;padding:0 12px;border-radius:14px;border:1px solid rgba(255,255,255,.1);background:#0e1013;color:#f1efe9;font:600 16px 'IBM Plex Mono';min-width:0;width:100%"></label>
+              </div>
+              <button onClick="{{st.saveBw}}" style="height:52px;border:0;border-radius:16px;background:#f5c542;color:#191204;font:700 15px 'IBM Plex Sans';cursor:pointer;transition:transform .15s" style-active="transform:scale(.98)">Save weight</button>
+              <sc-if value="{{st.noBw}}"><p style="margin:0;color:#6f757c;font-size:13px">No entries yet.</p></sc-if>
+              <div style="display:flex;flex-direction:column">
+                <sc-for list="{{st.bw}}" as="b" hint-placeholder-count="2">
+                  <div style="padding:10px 0;border-top:1px solid rgba(255,255,255,.06)">
+                    <sc-if value="{{b.view}}">
+                      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span><span style="color:#8e949b;font-size:13px">{{b.date}}</span> <strong style="font-family:'IBM Plex Mono';margin-left:6px">{{b.w}}</strong></span><span style="display:flex;gap:12px"><button onClick="{{b.edit}}" style="background:none;border:0;padding:0;color:#f5c542;font:600 13px 'IBM Plex Sans';cursor:pointer">Edit</button><button onClick="{{b.del}}" style="background:none;border:0;padding:0;color:#ff8a65;font:600 13px 'IBM Plex Sans';cursor:pointer">Delete</button></span></div>
+                    </sc-if>
+                    <sc-if value="{{b.isEdit}}">
+                      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                        <input type="date" value="{{st.edDate}}" onChange="{{st.onEdDate}}" style="height:42px;padding:0 10px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:#0e1013;color:#f1efe9;font:500 16px 'IBM Plex Sans'">
+                        <input value="{{st.edW}}" onChange="{{st.onEdW}}" inputmode="decimal" style="width:84px;height:42px;padding:0 10px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:#0e1013;color:#f1efe9;font:600 16px 'IBM Plex Mono'">
+                        <button onClick="{{b.saveEdit}}" style="height:42px;padding:0 16px;border:0;border-radius:12px;background:#f5c542;color:#191204;font:700 14px 'IBM Plex Sans';cursor:pointer">Save</button>
+                        <button onClick="{{b.cancel}}" style="height:42px;padding:0 8px;border:0;background:none;color:#8e949b;font:600 14px 'IBM Plex Sans';cursor:pointer">Cancel</button>
+                      </div>
+                    </sc-if>
+                    <sc-if value="{{b.isDel}}">
+                      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><span style="font-size:14px">Delete {{b.date}} — {{b.w}}?</span><span style="display:flex;gap:8px"><button onClick="{{b.delYes}}" style="height:38px;padding:0 14px;border:0;border-radius:11px;background:#ff8a65;color:#1a0b05;font:700 13px 'IBM Plex Sans';cursor:pointer">Delete</button><button onClick="{{b.cancel}}" style="height:38px;padding:0 8px;border:0;background:none;color:#8e949b;font:600 13px 'IBM Plex Sans';cursor:pointer">Keep</button></span></div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </section>
+            <section style="border-radius:26px;padding:22px;background:#131519;border:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;gap:12px;animation:rise .55s .1s both">
+              <h2 style="margin:0;font:700 24px/1 'Barlow Condensed';text-transform:uppercase;letter-spacing:.03em">Weight increments</h2>
+              <p style="margin:0;color:#8e949b;font-size:13px;text-wrap:pretty">Added to Set 1 when you hit the top of the rep range. Warm-up and back-off weights round to it. Default {{st.defInc}} kg.</p>
+              <sc-for list="{{st.groups}}" as="g" hint-placeholder-count="3">
+                <div style="display:flex;flex-direction:column;padding-top:8px">
+                  <span style="font:700 18px/1 'Barlow Condensed';text-transform:uppercase;letter-spacing:.05em;color:#f5c542;padding-bottom:6px">{{g.name}}</span>
+                  <sc-for list="{{g.items}}" as="it" hint-placeholder-count="6">
+                    <label style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:8px 0;border-top:1px solid rgba(255,255,255,.05);font-size:14px">{{it.name}}<span style="display:flex;align-items:center;gap:6px;flex:none"><input value="{{it.val}}" onChange="{{it.on}}" onBlur="{{it.commit}}" inputmode="decimal" style="width:68px;height:36px;padding:0 8px;border-radius:10px;border:1px solid rgba(255,255,255,.1);background:#0e1013;color:#f1efe9;font:600 16px 'IBM Plex Mono';text-align:center"><span style="color:#8e949b;font-size:12px">kg</span></span></label>
+                  </sc-for>
+                </div>
+              </sc-for>
+            </section>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+  </main>
+
+  <sc-if value="{{showTabbar}}" hint-placeholder-val="{{false}}">
+    <nav style="position:fixed;left:0;right:0;margin:0 auto;width:max-content;max-width:calc(100% - 24px);bottom:calc(14px + env(safe-area-inset-bottom));z-index:30;display:flex;gap:2px;padding:6px;border-radius:999px;background:rgba(22,24,28,.78);backdrop-filter:blur(20px) saturate(1.5);-webkit-backdrop-filter:blur(20px) saturate(1.5);border:1px solid rgba(255,255,255,.08);box-shadow:0 16px 44px rgba(0,0,0,.55);animation:sheet .5s cubic-bezier(.2,.8,.2,1) both">
+      <sc-for list="{{nav}}" as="n" hint-placeholder-count="4">
+        <button onClick="{{n.go}}" style="height:44px;padding:0 15px;border:0;border-radius:999px;font:600 13px 'IBM Plex Sans';cursor:pointer;white-space:nowrap;background:{{n.bg}};color:{{n.fg}};transition:background .35s cubic-bezier(.2,.8,.2,1),color .35s,transform .15s" style-active="transform:scale(.94)">{{n.label}}</button>
+      </sc-for>
+    </nav>
+  </sc-if>
+
+  <sc-if value="{{showMini}}" hint-placeholder-val="{{false}}">
+    <button onClick="{{tm.show}}" style="position:fixed;left:0;right:0;margin:0 auto;width:max-content;top:calc(12px + env(safe-area-inset-top));z-index:40;display:flex;align-items:center;gap:10px;padding:7px 16px 7px 7px;border-radius:999px;border:1px solid rgba(245,197,66,.35);background:rgba(22,24,28,.88);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);color:#f1efe9;cursor:pointer;box-shadow:0 12px 30px rgba(0,0,0,.5);animation:fade .35s both">
+      <span style="width:30px;height:30px;border-radius:50%;background:conic-gradient({{tm.color}} {{tm.deg}}, rgba(255,255,255,.08) 0)"></span>
+      <span style="font:700 21px/1 'Barlow Condensed';font-variant-numeric:tabular-nums">{{tm.time}}</span>
+      <span style="font-size:12px;color:#8e949b">{{tm.miniLabel}}</span>
+    </button>
+  </sc-if>
+
+  <sc-if value="{{showTimer}}" hint-placeholder-val="{{false}}">
+    <div style="position:fixed;inset:0;z-index:60;overflow-y:auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(16px,3.2vh,28px);padding:calc(56px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom));background:rgba(7,8,10,.9);backdrop-filter:blur(28px) saturate(1.2);-webkit-backdrop-filter:blur(28px) saturate(1.2);animation:fade .35s both">
+      <button onClick="{{tm.hide}}" style="position:absolute;top:calc(14px + env(safe-area-inset-top));right:16px;height:36px;padding:0 14px;border-radius:999px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#c9cdd2;font:600 12px 'IBM Plex Sans';cursor:pointer">Minimize</button>
+      <div style="font:700 12px/1 'IBM Plex Sans';letter-spacing:.26em;text-transform:uppercase;color:{{tm.labelFg}};transition:color .4s">{{tm.label}}</div>
+      <div style="position:relative;width:min(74vw,44vh,320px);aspect-ratio:1;flex:none;animation:{{tm.anim}}">
+        <div style="position:absolute;inset:10%;border-radius:50%;background:radial-gradient(circle,{{tm.glow}},transparent 70%);filter:blur(24px);transition:background .5s"></div>
+        <svg viewBox="0 0 100 100" style="position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg)">
+          <circle cx="50" cy="50" r="45" style="fill:none;stroke:rgba(255,255,255,.07);stroke-width:3"></circle>
+          <circle cx="50" cy="50" r="45" style="fill:none;stroke:{{tm.color}};stroke-width:3.4;stroke-linecap:round;stroke-dasharray:282.743;stroke-dashoffset:{{tm.offset}};transition:stroke-dashoffset .3s linear,stroke .5s"></circle>
+        </svg>
+        <div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center">
+          <div style="font:800 clamp(76px,19vw,112px)/.9 'Barlow Condensed';font-variant-numeric:tabular-nums;color:{{tm.timeFg}};transition:color .4s">{{tm.time}}</div>
+          <div style="margin-top:8px;font:500 13px 'IBM Plex Mono';color:#8e949b">{{tm.sub}}</div>
+        </div>
+      </div>
+      <sc-if value="{{tm.notDone}}">
+        <div style="display:flex;gap:8px">
+          <button onClick="{{tm.sub15}}" style="height:48px;min-width:72px;padding:0 16px;border-radius:999px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#f1efe9;font:600 14px 'IBM Plex Mono';cursor:pointer;transition:transform .15s" style-active="transform:scale(.93)">−15s</button>
+          <button onClick="{{tm.pause}}" style="height:48px;min-width:96px;padding:0 18px;border-radius:999px;border:1px solid rgba(255,255,255,.14);background:rgba(255,255,255,.08);color:#f1efe9;font:600 14px 'IBM Plex Sans';cursor:pointer;transition:transform .15s" style-active="transform:scale(.93)">{{tm.pauseLabel}}</button>
+          <button onClick="{{tm.add}}" style="height:48px;min-width:72px;padding:0 16px;border-radius:999px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#f1efe9;font:600 14px 'IBM Plex Mono';cursor:pointer;transition:transform .15s" style-active="transform:scale(.93)">+15s</button>
+        </div>
+      </sc-if>
+      <sc-if value="{{tm.hasNext}}">
+        <div style="width:min(100%,420px);padding:16px 18px;border-radius:20px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);display:flex;justify-content:space-between;align-items:center;gap:12px">
+          <div style="min-width:0"><div style="font:600 10px/1 'IBM Plex Sans';letter-spacing:.16em;text-transform:uppercase;color:#8e949b">{{tm.nextTitle}}</div><div style="margin-top:6px;font:700 24px/1.05 'Barlow Condensed';text-transform:uppercase">{{tm.nextName}}</div></div>
+          <div style="font:500 13px 'IBM Plex Mono';color:#f5c542;text-align:right">{{tm.nextLine}}</div>
+        </div>
+      </sc-if>
+      <button onClick="{{tm.skip}}" style="width:min(100%,420px);height:62px;flex:none;border:0;border-radius:20px;background:{{tm.skipBg}};color:{{tm.skipFg}};font:700 17px 'IBM Plex Sans';cursor:pointer;box-shadow:{{tm.skipShadow}};transition:background .4s,color .4s,box-shadow .4s,transform .15s" style-active="transform:scale(.975)">{{tm.skipLabel}}</button>
+      <div style="max-width:420px;text-align:center;font-size:12px;color:#6f757c;text-wrap:pretty">{{tm.reason}}</div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{showRecap}}" hint-placeholder-val="{{false}}">
+    <div style="position:fixed;inset:0;z-index:70;overflow-y:auto;background:rgba(7,8,10,.94);backdrop-filter:blur(26px);-webkit-backdrop-filter:blur(26px);animation:fade .4s both">
+      <div style="max-width:580px;margin:0 auto;padding:calc(44px + env(safe-area-inset-top)) 20px calc(40px + env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:18px">
+        <span style="font:700 11px/1 'IBM Plex Sans';letter-spacing:.2em;text-transform:uppercase;color:#f5c542;animation:rise .5s .05s both">Session complete</span>
+        <div style="font:800 clamp(72px,18vw,120px)/.82 'Barlow Condensed';text-transform:uppercase;animation:rise .6s .12s cubic-bezier(.2,.8,.2,1) both">{{rc.day}}<br><span style="color:#f5c542">done.</span></div>
+        <div style="color:#a3a9b0;animation:rise .5s .2s both">{{rc.sets}}</div>
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px">
+          <sc-for list="{{rc.stats}}" as="s" hint-placeholder-count="3">
+            <div style="padding:16px;border-radius:20px;background:#131519;border:1px solid rgba(255,255,255,.07);animation:pop .55s {{s.d}} both">
+              <div style="font:800 44px/.9 'Barlow Condensed';color:{{s.fg}}">{{s.n}}</div>
+              <div style="margin-top:6px;font-size:12px;color:#8e949b">{{s.l}}</div>
+            </div>
+          </sc-for>
+        </div>
+        <sc-if value="{{rc.hasHl}}">
+          <section style="border-radius:24px;padding:20px;background:#131519;border:1px solid rgba(245,197,66,.25);display:flex;flex-direction:column;animation:rise .55s .45s both">
+            <span style="font:600 11px/1 'IBM Plex Sans';letter-spacing:.16em;text-transform:uppercase;color:#8e949b;padding-bottom:8px">Highlights</span>
+            <sc-for list="{{rc.hl}}" as="h" hint-placeholder-count="3">
+              <div style="padding:12px 0;border-top:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;gap:2px">
+                <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><span style="font-weight:600">{{h.name}}</span><span style="font:500 14px 'IBM Plex Mono'">{{h.set}} <span style="color:#5fd38d">{{h.change}}</span></span></div>
+                <sc-if value="{{h.hasRec}}"><span style="font-size:13px;color:#a3a9b0">{{h.rec}}</span></sc-if>
+                <sc-if value="{{h.hasNext}}"><span style="font-size:13px;font-weight:600;color:#f5c542">{{h.next}}</span></sc-if>
+              </div>
+            </sc-for>
+          </section>
+        </sc-if>
+        <sc-if value="{{rc.hasClose}}">
+          <section style="border-radius:24px;padding:20px;background:#131519;border:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;animation:rise .55s .55s both">
+            <span style="font:600 11px/1 'IBM Plex Sans';letter-spacing:.16em;text-transform:uppercase;color:#8e949b;padding-bottom:8px">So close</span>
+            <sc-for list="{{rc.close}}" as="c" hint-placeholder-count="2"><div style="padding:10px 0;border-top:1px solid rgba(255,255,255,.06);display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap"><span style="font-weight:600">{{c.name}}</span><span style="color:#f5c542;font-size:14px">{{c.txt}}</span></div></sc-for>
+          </section>
+        </sc-if>
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:18px 20px;border-radius:24px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);animation:rise .55s .65s both">
+          <span style="font:600 11px/1 'IBM Plex Sans';letter-spacing:.16em;text-transform:uppercase;color:#8e949b">Next up</span>
+          <span style="font:800 36px/1 'Barlow Condensed';text-transform:uppercase">{{rc.next}}</span>
+        </div>
+        <button onClick="{{rc.done}}" style="height:64px;border:0;border-radius:20px;background:#f1efe9;color:#0a0b0d;font:700 17px 'IBM Plex Sans';cursor:pointer;animation:rise .55s .75s both;transition:transform .15s" style-active="transform:scale(.975)">Done</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{showAuth}}" hint-placeholder-val="{{false}}">
+    <div onClick="{{au.close}}" style="position:fixed;inset:0;z-index:80;background:rgba(0,0,0,.6);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center;padding:16px 16px calc(16px + env(safe-area-inset-bottom));animation:fade .25s both">
+      <div onClick="{{au.stop}}" style="width:100%;max-width:440px;border-radius:28px;padding:24px;background:#16181c;border:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;gap:12px;box-shadow:0 30px 80px rgba(0,0,0,.6);animation:sheet .4s cubic-bezier(.2,.8,.2,1) both">
+        <div style="font:800 30px/1 'Barlow Condensed';text-transform:uppercase">{{au.title}}</div>
+        <div style="color:#a3a9b0;font-size:14px;text-wrap:pretty">{{au.sub}}</div>
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:#8e949b">Email<input type="email" autocomplete="email" value="{{au.email}}" onChange="{{au.onEmail}}" onKeyDown="{{au.onKey}}" style="height:50px;padding:0 14px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:#0e1013;color:#f1efe9;font:500 16px 'IBM Plex Sans'"></label>
+        <label style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:#8e949b">Password<input type="password" autocomplete="current-password" value="{{au.pass}}" onChange="{{au.onPass}}" onKeyDown="{{au.onKey}}" style="height:50px;padding:0 14px;border-radius:14px;border:1px solid rgba(255,255,255,.12);background:#0e1013;color:#f1efe9;font:500 16px 'IBM Plex Sans'"></label>
+        <sc-if value="{{au.hasErr}}"><div style="font-size:13px;color:#ff8a65">{{au.err}}</div></sc-if>
+        <button onClick="{{au.submit}}" style="height:56px;border:0;border-radius:16px;background:#f5c542;color:#191204;font:700 16px 'IBM Plex Sans';cursor:pointer">{{au.btn}}</button>
+        <button onClick="{{au.switchMode}}" style="height:40px;border:0;background:none;color:#f5c542;font:600 14px 'IBM Plex Sans';cursor:pointer">{{au.switchLabel}}</button>
+        <button onClick="{{au.close}}" style="height:44px;border:1px solid rgba(255,255,255,.1);border-radius:14px;background:transparent;color:#a3a9b0;font:600 14px 'IBM Plex Sans';cursor:pointer">Not now, use on this device only</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{showConfirm}}" hint-placeholder-val="{{false}}">
+    <div onClick="{{cf.cancel}}" style="position:fixed;inset:0;z-index:75;background:rgba(0,0,0,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);display:flex;align-items:flex-end;justify-content:center;padding:16px 16px calc(16px + env(safe-area-inset-bottom));animation:fade .25s both">
+      <div onClick="{{cf.stop}}" style="width:100%;max-width:440px;border-radius:28px;padding:24px;background:#16181c;border:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;gap:12px;box-shadow:0 30px 80px rgba(0,0,0,.6);animation:sheet .4s cubic-bezier(.2,.8,.2,1) both">
+        <div style="font:800 30px/1 'Barlow Condensed';text-transform:uppercase">{{cf.title}}</div>
+        <div style="color:#a3a9b0;padding-bottom:6px">{{cf.body}}</div>
+        <button onClick="{{cf.ok}}" style="height:56px;border:0;border-radius:16px;background:{{cf.okBg}};color:#191204;font:700 16px 'IBM Plex Sans';cursor:pointer">{{cf.okLabel}}</button>
+        <button onClick="{{cf.cancel}}" style="height:52px;border:1px solid rgba(255,255,255,.1);border-radius:16px;background:transparent;color:#f1efe9;font:600 15px 'IBM Plex Sans';cursor:pointer">{{cf.cancelLabel}}</button>
+      </div>
+    </div>
+  </sc-if>
+
+  {{confetti}}
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { v: 0, vw: typeof window !== 'undefined' ? window.innerWidth : 1024 };
+  S = { loaded:false, meta:{lastCompleted:null}, incs:{}, history:[], active:null, view:'home', editing:null, editDraft:{w:'', r:''}, confirm:null, storageOk:true,
+    bw:[], restDays:[], cal:{y:2026, m:0}, chartMode:{}, openEx:{}, openSess:{}, draft:null, incDraft:{}, bwDraft:{date:'', w:''}, bwEdit:null, bwEditDraft:{date:'', w:''}, bwDel:null, recap:null, pick:null, whyOpen:false, dataMsg:'', restore:null,
+    authOpen:false, authMode:'in', authEmail:'', authPass:'', authErr:'', authBusy:false };
+
+  up(){ this.setState(s => ({ v: s.v + 1 })); }
+  componentDidMount(){
+    this._rs = () => this.setState({ vw: window.innerWidth });
+    window.addEventListener('resize', this._rs); this._rs();
+    const wait = () => { if (window.PPL) this.boot(); else this._w = setTimeout(wait, 40); };
+    wait();
+    this._iv = setInterval(() => this.tick(), 250);
+    this._vis = () => { if (document.visibilityState === 'visible'){ if (this.S.active) this.wake(true); else this.refreshFromAccount(); this.up(); } };
+    document.addEventListener('visibilitychange', this._vis);
+    this._unlock = () => this.unlockAudio();
+    document.addEventListener('pointerdown', this._unlock);
+  }
+  componentWillUnmount(){
+    clearInterval(this._iv); clearTimeout(this._w);
+    window.removeEventListener('resize', this._rs);
+    document.removeEventListener('visibilitychange', this._vis);
+    document.removeEventListener('pointerdown', this._unlock);
+  }
+  async boot(){
+    const P = window.PPL, S = this.S, n = new Date();
+    S.cal = { y:n.getFullYear(), m:n.getMonth() }; S.bwDraft.date = P.dateKey(n);
+    try{
+      const st = await P.initDB(); this.dbOk = true; this.storage = st;
+      await this.loadData();
+      // Background sync: re-read the local copy when the account brought in changes from another device.
+      setTimeout(() => { const st = P.STORAGE; let seen = null; try{ seen = localStorage.getItem('ppl-auth-asked'); }catch(e){}
+        if (st.configured && st.mode !== 'sync' && !seen){ S.authOpen = true; this.up(); } }, 900);
+      P.onStorageChange(kind => { if (kind === 'data') this.loadData().then(() => this.up()).catch(() => {}); else this.up(); });
+    }catch(e){ this.dbOk = false; S.storageOk = false; }
+    S.loaded = true; this.up();
+  }
+  // Reads everything from storage (the account when synced). Used at start, after a restore,
+  // and when the app comes back to the foreground between workouts (picks up the other device).
+  async loadData(){
+    const P = window.PPL, S = this.S;
+    const [meta, incs, active, sessions, bw, restDays] = await Promise.all([P.kvGet('meta'), P.kvGet('incs'), P.kvGet('active'), P.getSessions(), P.getBW(), P.kvGet('restDays')]);
+    S.bw = bw || []; S.restDays = restDays || [];
+    S.meta = meta || {lastCompleted:null}; S.incs = incs || {};
+    if (active){ S.active = active; this.wake(true); } else if (!S.active) S.active = null;
+    S.history = (sessions || []).sort((a, b) => b.id - a.id);
+  }
+  refreshFromAccount(){ if (this.dbOk) window.PPL.syncNow(); }
+  // ---------- account ----------
+  authVals(){
+    const S = this.S, signUp = S.authMode === 'up';
+    const close = () => { S.authOpen = false; S.authErr = ''; try{ localStorage.setItem('ppl-auth-asked', '1'); }catch(e){} this.up(); };
+    const go = async () => {
+      const email = (S.authEmail || '').trim(), pw = S.authPass || '';
+      if (!/^\S+@\S+\.\S+$/.test(email)){ S.authErr = 'Enter a valid email address.'; this.up(); return; }
+      if (pw.length < 6){ S.authErr = 'Password needs at least 6 characters.'; this.up(); return; }
+      S.authBusy = true; S.authErr = ''; this.up();
+      try{
+        await (signUp ? window.PPL.signUp(email, pw) : window.PPL.signIn(email, pw));
+        S.authPass = ''; close();
+      }catch(e){
+        const m = String(e && e.message || e);
+        S.authErr = /Invalid login/i.test(m) ? 'Wrong email or password.' : /already registered/i.test(m) ? 'That email already has an account. Sign in instead.' : /fetch|network/i.test(m) ? 'Can’t reach the server. Check your connection.' : m;
+      }
+      S.authBusy = false; this.up();
+    };
+    return { title: signUp ? 'Create account' : 'Sign in', btn: S.authBusy ? 'Please wait…' : (signUp ? 'Create account' : 'Sign in'),
+      sub: 'Sign in to keep your workouts matched between your phone and laptop. The app also works offline without signing in.',
+      email: S.authEmail, pass: S.authPass, err: S.authErr, hasErr: !!S.authErr,
+      onEmail: ev => { S.authEmail = ev.target.value; this.up(); }, onPass: ev => { S.authPass = ev.target.value; this.up(); },
+      submit: go, onKey: ev => { if (ev.key === 'Enter') go(); },
+      switchLabel: signUp ? 'Have an account? Sign in' : 'New here? Create an account',
+      switchMode: () => { S.authMode = signUp ? 'in' : 'up'; S.authErr = ''; this.up(); },
+      close, stop: ev => ev.stopPropagation() };
+  }
+  // ---------- backup & restore ----------
+  async backup(){
+    const P = window.PPL, S = this.S;
+    S.dataMsg = 'Preparing backup…'; this.up();
+    try{
+      const data = await P.exportAll();
+      const text = JSON.stringify(data, null, 1);
+      const name = `ppl-coach-backup-${P.dateKey(new Date())}.json`;
+      const dl = window.claude && window.claude.use ? await window.claude.use('downloads') : null;
+      const file = (typeof File !== 'undefined') ? new File([text], name, {type:'application/json'}) : null;
+      const touch = typeof matchMedia !== 'undefined' && matchMedia('(pointer:coarse)').matches;
+      if (dl){ await dl.save({ filename:name, data:text }); }
+      else if (touch && file && navigator.canShare && navigator.canShare({files:[file]})){
+        // Phones: the share sheet offers "Save to Files", which keeps the backup outside the browser.
+        try{ await navigator.share({files:[file], title:name}); }catch(e){ if (e && e.name === 'AbortError'){ S.dataMsg = 'Backup cancelled.'; this.up(); return; } throw e; }
+      }
+      else { const url = URL.createObjectURL(new Blob([text], {type:'application/json'})); const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000); }
+      S.dataMsg = `Backup saved: ${data.sessions.length} workouts, ${data.bodyweight.length} body-weight entries.`;
+    }catch(e){
+      S.dataMsg = e && e.code === 'declined' ? 'Backup cancelled.' : 'Couldn’t save the backup. Try again.';
+    }
+    this.up();
+  }
+  pickRestore(ev){
+    const P = window.PPL, S = this.S, f = ev.target.files && ev.target.files[0]; ev.target.value = '';
+    if (!f) return;
+    const rd = new FileReader();
+    rd.onload = () => {
+      let b = null; try{ b = JSON.parse(String(rd.result)); }catch(e){}
+      const err = b ? P.checkBackup(b) : 'This file isn’t a backup (it can’t be read as JSON).';
+      if (err){ S.restore = null; S.dataMsg = err; }
+      else { S.restore = b; S.dataMsg = ''; }
+      this.up();
+    };
+    rd.onerror = () => { S.dataMsg = 'Couldn’t read that file.'; this.up(); };
+    rd.readAsText(f);
+  }
+  async confirmRestore(){
+    const P = window.PPL, S = this.S, b = S.restore; if (!b) return;
+    S.restore = null; S.dataMsg = 'Restoring…'; this.up();
+    try{
+      if (this.S.active) b.active = undefined;   // never replace a workout in progress
+      const r = await P.importAll(b);
+      await this.loadData();
+      S.dataMsg = `Restored ${r.sessions} workouts and ${r.bodyweight} body-weight entries.`;
+    }catch(e){ S.dataMsg = (e && e.message) || 'Restore failed. Nothing was deleted.'; }
+    this.up();
+  }
+
+  // ---------- storage ----------
+  persist(fn){ if (!this.dbOk) return; fn().catch(() => { this.S.storageOk = false; this.up(); }); }
+  saveMeta(){ const P = window.PPL; this.persist(() => P.kvSet('meta', P.plain(this.S.meta))); }
+  saveIncs(){ const P = window.PPL; this.persist(() => P.kvSet('incs', P.plain(this.S.incs))); }
+  saveActive(){ const P = window.PPL, a = this.S.active; this.persist(() => P.kvSet('active', a ? P.plain(a) : null)); }
+  saveSession(s){ const P = window.PPL; this.persist(() => P.putSession(P.plain(s))); }
+  saveRestDays(){ const P = window.PPL; this.persist(() => P.kvSet('restDays', P.plain(this.S.restDays))); }
+
+  // ---------- helpers ----------
+  inc(id){ return this.S.incs[id] > 0 ? this.S.incs[id] : window.PPL.DEFAULT_INC; }
+  vib(p){ try{ navigator.vibrate && navigator.vibrate(p); }catch(e){} }
+  top(){ try{ window.scrollTo({ top:0, behavior:'smooth' }); }catch(e){} }
+  go(v){ this.S.view = v; this.S.editing = null; this.vib(6); this.up(); this.top(); }
+  exList(){ return this.S.active ? window.PPL.PROGRAM[this.S.active.day] : []; }
+  exComplete(e){ return this.S.active.entries[e.id].sets.every(Boolean); }
+  nextIncomplete(){ const a = this.S.active, list = this.exList();
+    for (let k = 1; k <= list.length; k++){ const j = (a.exIndex + k) % list.length; if (!this.exComplete(list[j])) return j; }
+    return -1; }
+  fmtDay(key){ const [y, m, d] = key.split('-').map(Number); return new Date(y, m - 1, d).toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'}); }
+  compute(e, entry){
+    const P = window.PPL, inc = this.inc(e.id), h1 = P.set1History(this.S.history, e.id), prev = h1[0] || null, plan = P.planSet1(prev, e, inc, h1[1] || null);
+    let set1 = plan.weight, set1Reason = plan.reason;
+    if (plan.kind === 'first' && entry.start != null){ set1 = entry.start; set1Reason = `No previous Set 1 is available, so you chose ${P.fmt(entry.start)} kg as your starting top set. This workout becomes the reference for next time.`; }
+    const warm = set1 != null ? P.warmup(set1, inc) : null, a1 = entry.sets[0], base = a1 ? a1.w : set1, baseKind = a1 ? 'actual' : 'planned', sets = [];
+    for (let i = 0; i < e.sets; i++){
+      if (i === 0) sets.push({ weight:set1, pct:1, calc: plan.kind === 'increase' ? `${P.fmt(prev.w)} + ${P.fmt(inc)} = ${P.fmt(set1)} kg` : plan.kind === 'same' ? 'Same as last Set 1' : plan.kind === 'rollback' ? `Back to ${P.fmt(set1)} kg after a missed attempt` : 'Your starting weight', reason:set1Reason });
+      else sets.push(base != null ? P.backoff(base, e, inc, i, baseKind) : { weight:null, calc:'', reason:'' });
+    }
+    return { inc, prev, prior:h1, plan, set1, set1Reason, warm, sets };
+  }
+  prevSameSet(exId, idx){
+    const sess = [...this.S.history].sort((a, b) => b.id - a.id).find(s => { const en = s.entries && s.entries[exId]; return en && en.sets && en.sets.some(Boolean); });
+    const v = sess && sess.entries[exId].sets[idx];
+    return v && v.w != null && v.r != null ? `${window.PPL.fmt(v.w)} kg × ${v.r}` : '—';
+  }
+  stepOf(e, entry, c){ if (c.set1 == null) return 'start'; if (!entry.warm) return 'warm'; const i = entry.sets.findIndex(x => !x); return i < 0 ? 'done' : i; }
+  nextPreview(){
+    const P = window.PPL, a = this.S.active, list = this.exList();
+    if (a.summaryFor){ const n = this.nextIncomplete(); if (n < 0) return null; const ne = list[n], c = this.compute(ne, a.entries[ne.id]);
+      return { title:'Next exercise', name:ne.name, line: c.set1 != null ? `${P.fmt(c.set1)} kg top set` : 'Set start weight' }; }
+    const e = list[a.exIndex], entry = a.entries[e.id], c = this.compute(e, entry), st = this.stepOf(e, entry, c);
+    if (st === 'warm') return { title:'Up next', name:'Warm-up', line:`${P.fmt(c.warm.weight)} kg · 8–10` };
+    if (typeof st !== 'number') return null;
+    return { title:'Up next', name:`Set ${st + 1}`, line:`${P.fmt(c.sets[st].weight)} kg · ${e.lo}–${e.hi}` };
+  }
+
+  // ---------- actions ----------
+  startWorkout(day){
+    const P = window.PPL, S = this.S; if (!P.PROGRAM[day]) return;
+    const entries = {}; P.PROGRAM[day].forEach(e => entries[e.id] = { start:null, warm:null, sets:Array(e.sets).fill(null) });
+    S.active = { id:Date.now(), date:new Date().toISOString(), day, exIndex:0, entries, timer:null, notice:null, done:false };
+    S.view = 'home'; S.editing = null; S.confirm = null; S.draft = null; S.whyOpen = false;
+    this.vib(18); this.saveActive(); this.wake(true); this.up(); this.top();
+  }
+  completeRest(){
+    const P = window.PPL, S = this.S; S.meta.lastCompleted = 'rest'; S.pick = null; this.saveMeta();
+    const k = P.dateKey(new Date()); if (!S.restDays.includes(k)){ S.restDays.push(k); this.saveRestDays(); }
+    this.vib([15, 40, 15]); this.up();
+  }
+  finishWorkout(){
+    const P = window.PPL, S = this.S, a = S.active;
+    S.recap = P.workoutSummary(a.day, a.entries, S.history, id => this.inc(id)); S.recap.at = Date.now();
+    const sess = { id:a.id, date:a.date, day:a.day, entries:a.entries };
+    S.history = S.history.filter(s => s.id !== sess.id); S.history.unshift(sess); this.saveSession(sess);
+    S.meta.lastCompleted = a.day; this.saveMeta();
+    S.active = null; this.saveActive(); this.wake(false);
+    S.view = 'home'; S.confirm = null; S.pick = null; S.draft = null;
+    this.vib([30, 60, 30, 60, 80]); this.up(); this.top();
+  }
+  discardWorkout(){ const S = this.S; S.active = null; this.saveActive(); this.wake(false); S.view = 'home'; S.confirm = null; S.draft = null; this.up(); }
+  startTimer(rest, next){ this.S.active.timer = { endAt:Date.now() + rest.sec * 1000, total:rest.sec, paused:false, remaining:rest.sec, reason:rest.reason, next, beeped:false, min:false }; }
+  timeLeft(t){ return t.paused ? t.remaining : Math.max(0, Math.ceil((t.endAt - Date.now()) / 1000)); }
+  logSet(idx, w, r){
+    const P = window.PPL, S = this.S, a = S.active, e = this.exList()[a.exIndex], entry = a.entries[e.id];
+    entry.sets[idx] = { w, r }; a.notice = null; S.editing = null; S.draft = null; S.whyOpen = false;
+    const pe = P.prevEntry(S.history, e.id);
+    a.flash = { exId:e.id, idx, at:Date.now(), cmp:P.compareSet(pe && pe.sets[idx], { w, r }),
+      best: idx > 0 ? P.backoffRecord(S.history, e.id, idx, { w, r }) : null,
+      top: idx === 0 ? P.topSetResult(e, this.inc(e.id), { w, r }, P.set1History(S.history, e.id)) : null };
+    if (idx < e.sets - 1) this.startTimer(P.restFor(e, false), `Set ${idx + 2}`);
+    else { a.summaryFor = e.id; if (this.nextIncomplete() < 0) a.timer = null; else this.startTimer(P.restFor(e, true), 'next exercise'); }
+    this.saveActive(); this.up();
+  }
+  logCurrent(e, step, isWarm){
+    const P = window.PPL, S = this.S, a = S.active, d = S.draft; if (!d) return;
+    const w = P.num(d.w), r = d.r; if (w == null || w < 0 || r == null) return;
+    if (isWarm){ a.entries[e.id].warm = { w, r }; a.notice = 'Warm-up done. Set 1 is next — this is the one that counts.'; S.draft = null; this.vib(15); this.saveActive(); this.up(); return; }
+    this.vib([20, 40, 20]); this.logSet(step, w, r); this.top();
+  }
+  bump(sign, inc, fallback){ const P = window.PPL, d = this.S.draft; if (!d) return; const v = P.num(d.w) ?? fallback ?? 0; d.w = P.fmt(Math.max(0, +(v + sign * inc).toFixed(3))); this.vib(5); this.up(); }
+  continueAfterSummary(){
+    const a = this.S.active; a.summaryFor = null; a.flash = null;
+    const n = this.nextIncomplete(); if (n < 0){ a.done = true; a.timer = null; } else a.exIndex = n;
+    this.S.draft = null; this.saveActive(); this.up(); this.top();
+  }
+  jump(i){
+    const S = this.S, a = S.active; if (i === a.exIndex && !a.done) return;
+    a.exIndex = i; a.done = false; a.notice = null; a.summaryFor = null; a.flash = null; S.editing = null; S.draft = null;
+    this.vib(6); this.saveActive(); this.up();
+  }
+  pauseTimer(){ const t = this.S.active.timer; if (!t) return;
+    if (t.paused){ t.endAt = Date.now() + t.remaining * 1000; t.paused = false; } else { t.remaining = this.timeLeft(t); t.paused = true; }
+    this.saveActive(); this.up(); }
+  adjust(s){ const t = this.S.active.timer; if (!t) return; const nl = Math.max(0, this.timeLeft(t) + s);
+    if (t.paused) t.remaining = nl; else t.endAt = Date.now() + nl * 1000;
+    if (nl > t.total) t.total = nl; if (nl > 0) t.beeped = false; this.vib(5); this.saveActive(); this.up(); }
+  skipTimer(){ this.S.active.timer = null; this.vib(8); this.saveActive(); this.up(); }
+  startEdit(key, v){ const P = window.PPL; this.S.editing = key; this.S.editDraft = { w: v ? P.fmt(v.w) : '', r: v ? String(v.r) : '' }; this.up(); }
+  saveEdit(){
+    const P = window.PPL, S = this.S, k0 = S.editing; if (!k0) return;
+    const w = P.num(S.editDraft.w), r = P.int(S.editDraft.r); if (w == null || w < 0 || r == null || r < 0) return;
+    const parts = k0.split(':'), kind = parts[0], k = parts[parts.length - 1];
+    if (kind === 'a'){ const en = S.active.entries[parts[1]]; if (k === 'w') en.warm = { w, r }; else en.sets[+k] = { w, r }; this.saveActive(); }
+    else { const sess = S.history.find(s => s.id === +parts[1]); if (!sess) return; const en = sess.entries[parts[2]]; if (k === 'w') en.warm = { w, r }; else en.sets[+k] = { w, r }; this.saveSession(sess); }
+    S.editing = null; this.up();
+  }
+  commitInc(id){ const P = window.PPL, S = this.S, v = P.num(S.incDraft[id]); delete S.incDraft[id]; if (v != null && v > 0){ S.incs[id] = v; this.saveIncs(); } this.up(); }
+
+  // ---------- audio / wake ----------
+  unlockAudio(){ try{ if (!this.actx){ const C = window.AudioContext || window.webkitAudioContext; if (C) this.actx = new C(); } if (this.actx && this.actx.state === 'suspended') this.actx.resume(); }catch(e){} }
+  beep(){
+    try{ const ac = this.actx; if (ac) [0, 0.22, 0.44].forEach((d, i) => { const o = ac.createOscillator(), g = ac.createGain(); o.frequency.value = i === 2 ? 1175 : 880; o.connect(g); g.connect(ac.destination); const t = ac.currentTime + d; g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.3, t + 0.02); g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18); o.start(t); o.stop(t + 0.2); }); }catch(e){}
+    this.vib([200, 100, 200]);
+  }
+  async wake(on){
+    try{
+      if (on && 'wakeLock' in navigator && !this.wl){ this.wl = await navigator.wakeLock.request('screen'); this.wl.addEventListener('release', () => { this.wl = null; }); }
+      if (!on && this.wl){ await this.wl.release(); this.wl = null; }
+    }catch(e){ this.wl = null; }
+  }
+  tick(){ const a = this.S.active; if (!a || !a.timer) return; const t = a.timer;
+    if (this.timeLeft(t) <= 0 && !t.beeped){ t.beeped = true; this.beep(); this.saveActive(); }
+    this.up(); }
+
+  // ---------- view models ----------
+  streakVals(){
+    const P = window.PPL, S = this.S, days = new Set(S.restDays), gym = new Set();
+    S.history.forEach(s => { if (P.PROGRAM[s.day]){ const k = P.dateKey(s.date); days.add(k); gym.add(k); } });
+    const now = new Date(), tk = P.dateKey(now), d = new Date(now);
+    let cur = 0; if (!days.has(tk)) d.setDate(d.getDate() - 1);
+    while (days.has(P.dateKey(d))){ cur++; d.setDate(d.getDate() - 1); }
+    let best = 0, run = 0, prev = null;
+    [...days].sort().forEach(k => { const t = new Date(k + 'T12:00:00'); run = prev && Math.round((t - prev) / 864e5) === 1 ? run + 1 : 1; best = Math.max(best, run); prev = t; });
+    const todayDone = days.has(tk), lead = (now.getDay() + 6) % 7;
+    const week = [...Array(7)].map((_, i) => { const x = new Date(now); x.setDate(now.getDate() - lead + i);
+      const k = P.dateKey(x), g = gym.has(k), r = !g && days.has(k), t = k === tk, fut = i > lead;
+      return { l:'MTWTFSS'[i], n:x.getDate(), bg: g ? '#f5c542' : r ? 'rgba(95,211,141,.16)' : 'rgba(255,255,255,.04)', fg: g ? '#191204' : r ? '#5fd38d' : fut ? '#4a4f56' : '#8e949b', ring: t ? '0 0 0 2px #131519, 0 0 0 4px rgba(241,239,233,.85)' : 'none' }; });
+    const atRisk = !todayDone && cur > 0;
+    const msg = atRisk ? `Train or log rest today to keep your ${cur}-day streak alive.` : todayDone ? (cur > 1 && cur >= best ? 'Best streak ever. Don’t break the chain.' : 'Today is locked in. See you tomorrow.') : 'Start a streak today. Rest days count too.';
+    return { cur, best, unit: cur === 1 ? 'day' : 'days', atRisk, week, msg, chipLabel: `${cur}-day streak`, chipBg: todayDone ? '#f5c542' : 'rgba(255,255,255,.08)', chipFg: todayDone ? '#191204' : '#f1efe9',
+      sideMsg: atRisk ? 'At risk — log today.' : todayDone ? 'Today is locked in.' : 'Start one today.' };
+  }
+  closeVals(n){ const P = window.PPL; return P.closeToProgression(this.S.history, P.ALL_EX, id => this.inc(id)).slice(0, n).map(t => ({ name:t.exercise.name, last:`${P.fmt(t.last.w)} kg × ${t.last.r}`, need: t.need === 1 ? '1 rep away' : `${t.need} reps away`, unlocks: P.fmt(t.unlocks) + ' kg', pct: Math.round(t.last.r / t.exercise.hi * 100) + '%' })); }
+  homeVals(){
+    const P = window.PPL, S = this.S, rec = P.nextDay(S.meta.lastCompleted), day = S.pick || rec, list = P.PROGRAM[day] || [], now = new Date(), h = now.getHours();
+    const tag = { push:'Chest · shoulders · triceps', pull:'Back · rear delts · biceps', legs:'Quads · hamstrings · calves · core', rest:'Recovery day. Strength is built between sessions.' };
+    const sets = list.reduce((n, e) => n + e.sets, 0);
+    const secs = list.reduce((n, e) => { const c = P.CATS[e.cat]; return n + e.sets * 45 + (e.sets - 1) * c.between + c.after + 60; }, 0);
+    const targets = list.map(e => { const p = P.planFromHistory(S.history, e, this.inc(e.id)), k = p.kind;
+      return { kind:k, name:e.name, scheme:`${e.sets} × ${e.lo}–${e.hi}`, w: p.weight != null ? P.fmt(p.weight) + ' kg' : '—',
+        tag: k === 'increase' ? '+' + P.fmt(this.inc(e.id)) + ' kg' : k === 'rollback' ? 'Reset' : k === 'first' ? 'New' : 'Hold',
+        tagBg: k === 'increase' ? '#f5c542' : k === 'first' ? 'rgba(124,199,255,.14)' : k === 'rollback' ? 'rgba(255,138,101,.14)' : 'rgba(255,255,255,.06)',
+        tagFg: k === 'increase' ? '#191204' : k === 'first' ? '#7cc7ff' : k === 'rollback' ? '#ff8a65' : '#a3a9b0' }; });
+    const up = targets.filter(t => t.kind === 'increase').length, restDone = S.restDays.includes(P.dateKey(now)), close = this.closeVals(3);
+    return {
+      date: now.toLocaleDateString(undefined, { weekday:'long', month:'short', day:'numeric' }),
+      greeting: h < 5 ? 'Late one tonight.' : h < 12 ? 'Good morning.' : h < 18 ? 'Good afternoon.' : 'Good evening.',
+      dayName: P.DAY_NAMES[day], tagline: tag[day], training: day !== 'rest',
+      badge: day === rec ? 'Recommended' : 'Your pick', badgeBg: day === rec ? 'rgba(245,197,66,.14)' : 'rgba(255,255,255,.06)', badgeFg: day === rec ? '#f5c542' : '#c9cdd2',
+      stats: [{ n:list.length, l:'exercises' }, { n:sets, l:'working sets' }, { n:'~' + Math.round(secs / 300) * 5, l:'minutes' }],
+      hasUp: up > 0, upLine: up === 1 ? '1 lift goes up today.' : `${up} lifts go up today.`,
+      startLabel: `Start ${P.DAY_NAMES[day]}`, start: () => this.startWorkout(day),
+      restOpen: day === 'rest' && !restDone, restDone: day === 'rest' && restDone, logRest: () => this.completeRest(), after: P.DAY_NAMES[P.nextDay('rest')],
+      picks: P.ROTATION.map(d => ({ label:P.DAY_NAMES[d], rec: d === rec, go: () => { S.pick = d; this.vib(6); this.up(); }, bg: d === day ? '#f1efe9' : 'transparent', fg: d === day ? '#0a0b0d' : '#a3a9b0' })),
+      recNote: S.meta.lastCompleted ? `${P.DAY_NAMES[rec]} is next in the rotation — you last completed ${P.DAY_NAMES[S.meta.lastCompleted]}.${day !== rec ? ` After ${P.DAY_NAMES[day]}, ${P.DAY_NAMES[P.nextDay(day)]} is next.` : ''}` : 'The rotation starts with Push. Push → Pull → Legs → Rest.',
+      targets, hasClose: close.length > 0, close };
+  }
+  workoutVals(){
+    const P = window.PPL, S = this.S, a = S.active, list = this.exList();
+    const total = list.reduce((n, e) => n + e.sets, 0), done = list.reduce((n, e) => n + a.entries[e.id].sets.filter(Boolean).length, 0);
+    const W = { pct: (done / total * 100).toFixed(1) + '%', pctTxt: `${done}/${total}`, isDone: !!a.done, active: !a.done,
+      title: a.done ? `${P.DAY_NAMES[a.day]} · complete` : `${P.DAY_NAMES[a.day]} · ${a.exIndex + 1} of ${list.length}`,
+      askEnd: () => { S.confirm = 'end'; this.up(); }, askDiscard: () => { S.confirm = 'discard'; this.up(); } };
+    W.strip = list.map((e, i) => { const n = a.entries[e.id].sets.filter(Boolean).length, comp = n === e.sets, cur = i === a.exIndex && !a.done;
+      return { n: comp ? '✓' : i + 1, name:e.name, sub: comp ? 'done' : `${n}/${e.sets} sets`, go: () => this.jump(i),
+        bg: cur ? '#f5c542' : '#131519', fg: cur ? '#191204' : '#f1efe9', border: cur ? '#f5c542' : comp ? 'rgba(95,211,141,.35)' : 'rgba(255,255,255,.07)',
+        numBg: cur ? 'rgba(25,18,4,.12)' : comp ? 'rgba(95,211,141,.18)' : 'rgba(255,255,255,.06)', subFg: cur ? 'rgba(25,18,4,.65)' : comp ? '#5fd38d' : '#8e949b' }; });
+    if (a.done){
+      W.finish = () => this.finishWorkout(); W.nextDay = P.DAY_NAMES[P.nextDay(a.day)];
+      W.logged = list.map(e => ({ name:e.name, sets: a.entries[e.id].sets.map(s => s ? `${P.fmt(s.w)}×${s.r}` : '—').join('  ') }));
+      return W;
+    }
+    const e = list[a.exIndex], entry = a.entries[e.id], c = this.compute(e, entry), step = this.stepOf(e, entry, c), cat = P.CATS[e.cat];
+    W.exName = e.name;
+    W.meta = [{ t:cat.label }, { t:`${e.lo}–${e.hi} reps` }, { t:`${P.fmtTime(cat.between)} rest` }];
+    W.dots = [['W', entry.warm, step === 'warm'], ...entry.sets.map((s, i) => [String(i + 1), s, step === i])].map(([t, v, cur]) => ({ t: v ? '✓' : t,
+      bg: v ? '#5fd38d' : cur ? 'rgba(245,197,66,.14)' : 'rgba(255,255,255,.05)', fg: v ? '#06140c' : cur ? '#f5c542' : '#8e949b', ring: cur ? 'inset 0 0 0 2px #f5c542' : 'none' }));
+    W.hasNotice = !!a.notice; W.notice = a.notice || '';
+    const f = a.flash, sentence = s => { const l = s.toLowerCase(); return l.charAt(0).toUpperCase() + l.slice(1); };
+    W.hasFlash = false; W.hasTop = false; W.flash = {}; W.top = {};
+    if (f && f.exId === e.id){
+      if (!f.top){ W.hasFlash = true; W.flash = { title:`Set ${f.idx + 1} complete`, cmp: sentence(f.cmp.text), hasPr: !!f.best, pr:'New best set', border: f.best ? 'rgba(245,197,66,.5)' : 'rgba(95,211,141,.3)' }; }
+      else { const t = f.top, un = t.status === 'unlocked', miss = t.status === 'missed';
+        W.hasTop = true; W.top = { line:`Set 1 · ${sentence(t.comparison.text)}`, head:t.headline, lines:t.lines.map(x => ({ t:x })), showProg: !miss,
+          progPct: (t.progress.reps / t.progress.target * 100) + '%', progTxt: `${t.progress.reps} / ${t.progress.target}`, unlocked: un, notUnlocked: !un,
+          next: P.fmt(t.nextTopSetWeight) + ' kg', nextNote: miss ? ' — back to the weight before this attempt' : '', hasRec: !!t.recordLine, rec: t.recordLine ? `${t.recordLine.text} · ${t.recordLine.detail}` : '',
+          border: un ? 'rgba(245,197,66,.6)' : miss ? 'rgba(255,138,101,.4)' : 'rgba(95,211,141,.3)', bg: un ? 'linear-gradient(160deg,rgba(245,197,66,.16),#131519 65%)' : '#131519' }; }
+    }
+    const isSummary = a.summaryFor === e.id;
+    W.isSummary = isSummary; W.isStart = !isSummary && step === 'start'; W.isExDone = !isSummary && step === 'done';
+    W.isSet = !isSummary && (step === 'warm' || typeof step === 'number');
+    if (W.isStart){
+      const key = e.id + ':start'; if (!S.draft || S.draft.key !== key) S.draft = { key, w:'20', r:null };
+      const d = S.draft; W.wStr = d.w; W.onW = ev => { d.w = ev.target.value; this.up(); };
+      W.minus = () => this.bump(-1, c.inc, 20); W.plus = () => this.bump(1, c.inc, 20);
+      W.useStart = () => { const w = P.num(d.w); if (w == null || w <= 0) return; entry.start = w; S.draft = null; this.vib(12); this.saveActive(); this.up(); };
+    }
+    if (W.isSet){
+      const isWarm = step === 'warm', recW = isWarm ? c.warm.weight : c.sets[step].weight, key = `${e.id}:${step}`;
+      if (!S.draft || S.draft.key !== key) S.draft = { key, w:P.fmt(recW), r:null };
+      const d = S.draft, curW = P.num(d.w);
+      W.setLabel = isWarm ? 'Warm-up' : `Set ${step + 1}`;
+      W.setSub = isWarm ? 'Not a working set' : step === 0 ? `Top set · of ${e.sets}` : `Back-off · of ${e.sets}`;
+      W.wStr = d.w; W.onW = ev => { d.w = ev.target.value; this.up(); };
+      W.minus = () => this.bump(-1, c.inc, recW); W.plus = () => this.bump(1, c.inc, recW);
+      W.isOff = curW !== recW; W.recWTxt = P.fmt(recW) + ' kg'; W.resetW = () => { d.w = P.fmt(recW); this.up(); };
+      W.target = isWarm ? '8–10 easy reps' : `${e.lo}–${e.hi} reps`;
+      const pv = isWarm ? '—' : this.prevSameSet(e.id, step); W.hasPrev = pv !== '—'; W.prev = pv;
+      W.hasProg = false;
+      if (step === 0 && c.prev){ const same = c.prev.w === c.set1, reps = same ? Math.min(c.prev.r, e.hi) : 0, nx = P.fmt(+(c.set1 + c.inc).toFixed(3));
+        W.hasProg = true; W.progPct = (reps / e.hi * 100) + '%'; W.progTxt = `${reps} / ${e.hi}`;
+        W.progNote = same ? `Hit ${e.hi} reps at ${P.fmt(c.set1)} kg to unlock ${nx} kg.` : `New weight today. ${e.hi} reps unlocks ${nx} kg.`; }
+      const lo = isWarm ? 5 : Math.max(1, e.lo - 3), hi = isWarm ? 12 : e.hi + 3;
+      W.reps = [];
+      for (let n = lo; n <= hi; n++){ const sel = d.r === n, inR = isWarm ? (n >= 8 && n <= 10) : (n >= e.lo && n <= e.hi), topR = !isWarm && n >= e.hi;
+        W.reps.push({ n, go: () => { d.r = n; this.vib(6); this.up(); },
+          bg: sel ? '#f5c542' : inR ? '#1f2328' : 'rgba(255,255,255,.02)', fg: sel ? '#191204' : inR ? '#f1efe9' : '#6f757c',
+          border: sel ? '#f5c542' : topR ? 'rgba(245,197,66,.4)' : 'rgba(255,255,255,.07)', tf: sel ? 'scale(1.08)' : 'scale(1)', glow: sel ? '0 8px 24px -6px rgba(245,197,66,.6)' : 'none' }); }
+      W.repHint = isWarm ? 'Easy and controlled' : `${e.hi}+ unlocks more weight`;
+      const ok = d.r != null && curW != null && curW >= 0;
+      W.cantLog = !ok; W.btnBg = ok ? '#f5c542' : 'rgba(255,255,255,.06)'; W.btnFg = ok ? '#191204' : '#6f757c'; W.btnShadow = ok ? '0 16px 40px -12px rgba(245,197,66,.65)' : 'none';
+      W.btnLabel = !ok ? 'Tap your reps' : isWarm ? `Log warm-up · ${P.fmt(curW)} kg × ${d.r}` : `Complete set · ${P.fmt(curW)} kg × ${d.r}`;
+      W.log = () => this.logCurrent(e, step, isWarm);
+      W.whyOpen = !!S.whyOpen; W.whyLabel = S.whyOpen ? 'Hide reasoning' : 'Why this weight?'; W.toggleWhy = () => { S.whyOpen = !S.whyOpen; this.up(); };
+      W.why = isWarm ? c.warm.reason : step === 0 ? c.set1Reason : c.sets[step].reason;
+      W.restTxt = isWarm ? 'No rest timer after the warm-up.' : 'Rest after this set: ' + P.restFor(e, step === e.sets - 1).reason;
+    }
+    W.sum = {};
+    if (isSummary){ const sm = P.exerciseSummary(e, this.inc(e.id), entry, S.history), ni = this.nextIncomplete(), ne = ni >= 0 ? list[ni] : null;
+      W.sum = { name:e.name, sets: sm.sets.map(s => ({ t:`${P.fmt(s.w)} × ${s.r}` })), first: sm.firstTime, hasGains: !sm.firstTime && sm.gains.length > 0, noGains: !sm.firstTime && !sm.gains.length,
+        gains: sm.gains.map(g => ({ t:g })), hasNext: !!sm.nextTime, nextTime: sm.nextTime || '', hasNextEx: !!ne, nextEx: ne ? ne.name : '', cont: ne ? 'Next exercise →' : 'Wrap up →', go: () => this.continueAfterSummary() }; }
+    if (W.isExDone){ const ni = this.nextIncomplete();
+      W.exDoneLabel = ni >= 0 ? 'Next exercise →' : 'Wrap up →';
+      W.exDoneGo = ni >= 0 ? () => this.jump(ni) : () => { a.done = true; a.timer = null; this.saveActive(); this.up(); }; }
+    const row = (key, label, target, calc, val, cur) => ({ label, target, calc, hasActual: !!val, actual: val ? `${P.fmt(val.w)} × ${val.r}` : '', editing: S.editing === key,
+      edit: () => this.startEdit(key, val), bg: cur ? 'rgba(245,197,66,.08)' : 'transparent', lblFg: cur ? '#f5c542' : '#f1efe9' });
+    W.plan = [row(`a:${e.id}:w`, 'Warm-up', c.warm ? `${P.fmt(c.warm.weight)} × 8–10` : '—', c.warm ? c.warm.calc : '', entry.warm, step === 'warm'),
+      ...c.sets.map((s, i) => row(`a:${e.id}:${i}`, i === 0 ? 'Set 1 · top' : `Set ${i + 1}`, s.weight != null ? `${P.fmt(s.weight)} × ${e.lo}–${e.hi}` : '—', (s.calc || '') + (i > 0 && s.pct ? ` · ${P.pctLabel(s.pct)}` : ''), entry.sets[i], step === i))];
+    W.system = `${e.sets}-set back-off · ${P.BACKOFF[e.sets].map(P.pctLabel).join(' / ')}`;
+    W.incStr = S.incDraft[e.id] ?? P.fmt(c.inc); W.onInc = ev => { S.incDraft[e.id] = ev.target.value; this.up(); }; W.commitInc = () => this.commitInc(e.id);
+    return W;
+  }
+  timerVals(){
+    const P = window.PPL, a = this.S.active, t = a.timer, left = this.timeLeft(t), done = left <= 0, nx = this.nextPreview(), frac = done ? 1 : Math.min(1, left / t.total);
+    return { time: done ? 'GO' : P.fmtTime(left), sub: done ? 'rest complete' : t.paused ? 'paused' : `of ${P.fmtTime(t.total)}`,
+      offset: (282.743 * (1 - frac)).toFixed(2), color: done ? '#5fd38d' : left <= 10 ? '#ff8a65' : '#f5c542',
+      glow: done ? 'rgba(95,211,141,.4)' : left <= 10 ? 'rgba(255,138,101,.3)' : 'rgba(245,197,66,.22)', timeFg: done ? '#5fd38d' : '#f1efe9',
+      anim: done ? 'breathe 1.6s ease-in-out infinite' : 'none', label: done ? 'Time to lift' : t.paused ? 'Paused' : 'Rest', labelFg: done ? '#5fd38d' : '#8e949b',
+      deg: (frac * 360).toFixed(1) + 'deg', miniLabel: done ? 'Go' : nx ? nx.name : 'Rest',
+      pauseLabel: t.paused ? 'Resume' : 'Pause', notDone: !done, pause: () => this.pauseTimer(), add: () => this.adjust(15), sub15: () => this.adjust(-15),
+      hasNext: !!nx, nextTitle: nx ? nx.title : '', nextName: nx ? nx.name : '', nextLine: nx ? nx.line : '',
+      skip: () => this.skipTimer(), skipLabel: done ? 'Let’s go →' : 'Skip rest', skipBg: done ? '#5fd38d' : 'rgba(255,255,255,.07)', skipFg: done ? '#06140c' : '#f1efe9',
+      skipShadow: done ? '0 16px 44px -12px rgba(95,211,141,.7)' : 'none', reason: t.reason,
+      hide: () => { t.min = true; this.saveActive(); this.up(); }, show: () => { t.min = false; this.saveActive(); this.up(); } };
+  }
+  recapVals(){
+    const P = window.PPL, r = this.S.recap, c = r.counts;
+    return { day:P.DAY_NAMES[r.day], sets:`${r.done} of ${r.total} working sets logged.`,
+      stats: [{ n:c.improved, l:'Improved', fg:'#5fd38d', d:'.3s' }, { n:c.matched, l:'Matched', fg:'#f1efe9', d:'.38s' }, { n:c.other, l:'New / held', fg:'#a3a9b0', d:'.46s' }],
+      hasHl: r.highlights.length > 0, hl: r.highlights.map(x => ({ name:x.name, set:x.set, change:x.change || '', hasRec: !!x.record, rec: x.record ? `${x.record.type === 'e1rm' ? 'New est. 1RM' : 'New top-set weight'} · ${x.record.detail}` : '', hasNext: !!x.next, next: x.next || '' })),
+      hasClose: r.close.length > 0, close: r.close.map(t => ({ name:t.exercise.name, txt:`${P.plural(t.need, 'more rep')} unlocks ${P.fmt(t.unlocks)} kg` })),
+      next: P.DAY_NAMES[r.nextDay], done: () => { this.S.recap = null; this.up(); this.top(); } };
+  }
+  confirmVals(){
+    const S = this.S, end = S.confirm === 'end';
+    return { title: end ? 'End workout?' : 'Discard workout?', body: end ? 'Sets logged so far are saved and count toward your progress.' : 'Nothing from this session will be saved. This can’t be undone.',
+      okLabel: end ? 'Save & end' : 'Delete workout', okBg: end ? '#f5c542' : '#ff8a65', cancelLabel: end ? 'Keep going' : 'Keep it',
+      ok: () => end ? this.finishWorkout() : this.discardWorkout(), cancel: () => { S.confirm = null; this.up(); }, stop: ev => ev.stopPropagation() };
+  }
+  chart(pts){
+    const P = window.PPL, W = 320, H = 150, L = 34, R = 12, T = 18, B = 22, vs = pts.map(p => p.v), vmax = Math.max(...vs);
+    let lo = Math.min(...vs), hi = vmax;
+    if (lo === hi){ lo -= 5; hi += 5; } else { const pad = (hi - lo) * 0.2; lo -= pad; hi += pad; }
+    lo = Math.max(0, lo);
+    const raw = (hi - lo) / 2, mag = Math.pow(10, Math.floor(Math.log10(raw))), step = [1, 2, 2.5, 5, 10].map(k => k * mag).find(s => s >= raw) || 10 * mag;
+    lo = Math.max(0, Math.floor(lo / step) * step); hi = Math.ceil(hi / step) * step; if (hi <= lo) hi = lo + step;
+    const t0 = pts[0].t, t1 = pts[pts.length - 1].t, one = pts.length === 1 || t1 === t0;
+    const x = t => one ? (L + (W - L - R) / 2) : L + (t - t0) / (t1 - t0) * (W - L - R), y = v => T + (1 - (v - lo) / (hi - lo)) * (H - T - B);
+    const ticks = [lo, (lo + hi) / 2, hi];
+    const line = pts.length > 1 ? pts.map((p, i) => `${i ? 'L' : 'M'}${x(p.t).toFixed(1)} ${y(p.v).toFixed(1)}`).join('') : '';
+    const lp = pts[pts.length - 1], ex = x(lp.t), ey = y(lp.v);
+    const o = { grid: ticks.map(v => `M${L} ${y(v).toFixed(1)}H${W - R}`).join(''), line,
+      area: line ? `${line}L${x(t1).toFixed(1)} ${H - B}L${x(t0).toFixed(1)} ${H - B}Z` : '',
+      dots: pts.slice(0, -1).map(p => { const cx = x(p.t), cy = y(p.v); return `M${(cx - 2.5).toFixed(1)} ${cy.toFixed(1)}a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0 -5 0`; }).join(''),
+      ex: ex.toFixed(1), ey: ey.toFixed(1), lx: Math.min(ex, W - R).toFixed(1), ly: (ey - 11).toFixed(1), end: P.fmt(lp.v), anchor: one ? 'middle' : 'end',
+      tx: L - 6, x0: x(t0).toFixed(1), x1: x(t1).toFixed(1), l0: pts[0].label, l1: one ? '' : lp.label, xa0: one ? 'middle' : 'start', by: H - 4 };
+    ticks.forEach((v, i) => { o['ty' + i] = (y(v) + 4).toFixed(1); o['tl' + i] = P.fmt(+v.toFixed(2)); });
+    return o;
+  }
+  exCardVals(e){
+    const P = window.PPL, S = this.S, series = P.set1Series(S.history, e.id), last = series[series.length - 1], first = series[0], open = !!S.openEx[e.id], mode = S.chartMode[e.id] || 'w';
+    const v = { name:e.name, open, rot: open ? '-90deg' : '90deg', toggle: () => { S.openEx[e.id] = !open; this.up(); }, sub: last ? `${P.fmt(last.w)} kg × ${last.r}` : 'No data yet',
+      hasChart: series.length > 0, noData: !series.length, trend:'', trendFg:'#8e949b', ch:{}, mW:{}, mE:{} };
+    if (series.length > 1){ const d = last.e1rm - first.e1rm, pc = d / first.e1rm * 100; v.trend = (d >= 0 ? '+' : '') + pc.toFixed(0) + '%'; v.trendFg = d > 0 ? '#5fd38d' : d < 0 ? '#ff8a65' : '#8e949b'; }
+    if (open && last){
+      const bwE = P.bodyWeightFor(S.bw, P.dateKey(last.date));
+      const sp = P.percentileLabel(P.getStrengthPercentile({ exercise:e, sex:'male', bodyWeightKg: bwE ? bwE.weightKg : null, estimated1RM: last.e1rm }));
+      v.latest = `${P.fmt(last.w)} × ${last.r}`; v.e1 = last.e1rm.toFixed(1); v.formula = `${P.fmt(last.w)} × (1 + ${last.r}/30)`; v.pct = sp.text;
+      const seg = m => ({ go: () => { S.chartMode[e.id] = m; this.up(); }, bg: mode === m ? '#f1efe9' : 'transparent', fg: mode === m ? '#0a0b0d' : '#a3a9b0' });
+      v.mW = seg('w'); v.mE = seg('e');
+      v.ch = this.chart(series.map(p => ({ t:new Date(p.date).getTime(), v: mode === 'w' ? p.w : +p.e1rm.toFixed(1), label: new Date(p.date).toLocaleDateString(undefined, { month:'short', day:'numeric' }) })));
+    }
+    return v;
+  }
+  dashVals(sk){
+    const P = window.PPL, S = this.S, { y, m } = S.cal, inc = id => this.inc(id), gymBy = {};
+    S.history.forEach(s => { if (P.PROGRAM[s.day]){ const k = P.dateKey(s.date); (gymBy[k] = gymBy[k] || []).push(P.DAY_NAMES[s.day]); } });
+    const rest = new Set(S.restDays), first = new Date(y, m, 1), lead = (first.getDay() + 6) % 7, n = P.daysInMonth(y, m), tk = P.dateKey(new Date()), cells = [];
+    for (let i = 0; i < lead; i++) cells.push({ n:'', bg:'transparent', fg:'transparent', ring:'none', title:'' });
+    for (let d = 1; d <= n; d++){ const k = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`, g = gymBy[k], r = !g && rest.has(k);
+      cells.push({ n:d, title: g ? g.join(' + ') : r ? 'Rest' : '', bg: g ? '#f5c542' : r ? 'rgba(95,211,141,.16)' : 'rgba(255,255,255,.035)', fg: g ? '#191204' : r ? '#5fd38d' : '#6f757c', ring: k === tk ? 'inset 0 0 0 2px #f1efe9' : 'none' }); }
+    const mk = `${y}-${String(m + 1).padStart(2, '0')}-`, monthN = S.history.filter(x => P.PROGRAM[x.day] && P.dateKey(x.date).startsWith(mk)).length;
+    const feed = P.progressFeed(S.history, inc, 999), unlocks = feed.filter(ev => ev.sub && ev.sub.startsWith('Next session')).length, total = S.history.filter(x => P.PROGRAM[x.day]).length;
+    const yd = P.dateKey(new Date(Date.now() - 864e5));
+    const dl = iso => { const k = P.dateKey(iso); return k === tk ? 'Today' : k === yd ? 'Yesterday' : new Date(iso).toLocaleDateString(undefined, { month:'short', day:'numeric' }); };
+    const mv = dd => () => { const t = dd === 0 ? new Date() : new Date(S.cal.y, S.cal.m + dd, 1); S.cal = { y:t.getFullYear(), m:t.getMonth() }; this.up(); };
+    const close = this.closeVals(4);
+    return { stats: [{ n:sk.cur, l:'Day streak', d:'0s', fg:'#f5c542' }, { n:monthN, l:'Workouts this month', d:'.05s', fg:'#f1efe9' }, { n:total, l:'Workouts all time', d:'.1s', fg:'#f1efe9' }, { n:unlocks, l:'Weights unlocked', d:'.15s', fg:'#5fd38d' }],
+      month: first.toLocaleDateString(undefined, { month:'long', year:'numeric' }), prev: mv(-1), next: mv(1), today: mv(0),
+      monthNote: monthN ? `${P.plural(monthN, 'workout')} this month` : '', wd: 'MTWTFSS'.split('').map(t => ({ t })), cells,
+      hasClose: close.length > 0, close, noFeed: !feed.length, feed: feed.slice(0, 10).map(ev => ({ date:dl(ev.date), title:ev.title, line:ev.line || '', sub:ev.sub || '' })),
+      groups: ['push', 'pull', 'legs'].map(d => ({ name:P.DAY_NAMES[d], items:P.PROGRAM[d].map(e => this.exCardVals(e)) })) };
+  }
+  histVals(){
+    const P = window.PPL, S = this.S, sorted = [...S.history].sort((a, b) => b.id - a.id);
+    return { empty: !sorted.length, sessions: sorted.map((s, idx) => {
+      const open = S.openSess[s.id] ?? idx === 0;
+      const exs = (P.PROGRAM[s.day] || []).filter(e => s.entries[e.id] && (s.entries[e.id].warm || s.entries[e.id].sets.some(Boolean)));
+      const nSets = exs.reduce((n, e) => n + s.entries[e.id].sets.filter(Boolean).length, 0);
+      return { title: new Date(s.date).toLocaleDateString(undefined, { weekday:'long', month:'short', day:'numeric' }), day: P.DAY_NAMES[s.day] || s.day,
+        sub: `${exs.length} exercises · ${nSets} sets`, open, rot: open ? '-90deg' : '90deg', toggle: () => { S.openSess[s.id] = !open; this.up(); },
+        exs: open ? exs.map(e => { const en = s.entries[e.id];
+          return { name:e.name, rows: [['w', 'Warm-up', en.warm], ...en.sets.map((v, i) => [i, `Set ${i + 1}`, v])].map(([k, label, v]) => { const key = `h:${s.id}:${e.id}:${k}`;
+            return { label, hasVal: !!v, noVal: !v, val: v ? `${P.fmt(v.w)} kg × ${v.r}` : '', edit: () => this.startEdit(key, v), editing: S.editing === key }; }) }; }) : [] }; }) };
+  }
+  settingsVals(){
+    const P = window.PPL, S = this.S, valid = (dt, w) => /^\d{4}-\d{2}-\d{2}$/.test(dt || '') && w != null && w > 0;
+    const groups = ['push', 'pull', 'legs'].map(d => ({ name:P.DAY_NAMES[d], items: P.PROGRAM[d].map(e => ({ name:e.name, val: S.incDraft[e.id] ?? P.fmt(this.inc(e.id)), on: ev => { S.incDraft[e.id] = ev.target.value; this.up(); }, commit: () => this.commitInc(e.id) })) }));
+    const bw = [...S.bw].sort((a, b) => a.date < b.date ? 1 : a.date > b.date ? -1 : b.createdAt - a.createdAt).map(e => { const ed = S.bwEdit === e.id, del = S.bwDel === e.id;
+      return { date:this.fmtDay(e.date), w:P.fmt(e.weightKg) + ' kg', view: !ed && !del, isEdit:ed, isDel:del,
+        edit: () => { S.bwEdit = e.id; S.bwDel = null; S.bwEditDraft = { date:e.date, w:P.fmt(e.weightKg) }; this.up(); },
+        del: () => { S.bwDel = e.id; S.bwEdit = null; this.up(); }, cancel: () => { S.bwEdit = null; S.bwDel = null; this.up(); },
+        delYes: () => { S.bw = S.bw.filter(x => x.id !== e.id); this.persist(() => P.delBW(e.id)); S.bwDel = null; this.up(); },
+        saveEdit: () => { const dt = S.bwEditDraft.date, w = P.num(S.bwEditDraft.w); if (!valid(dt, w)) return; e.date = dt; e.weightKg = w; e.updatedAt = Date.now(); this.persist(() => P.putBW(P.plain(e))); S.bwEdit = null; this.up(); } }; });
+    const st = window.PPL.STORAGE || {}, synced = st.mode === 'sync';
+    const ago = t => { if (!t) return ''; const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : new Date(t).toLocaleDateString(undefined, {month:'short', day:'numeric'}); };
+    const stState = synced ? st.state : 'local';
+    const rs = S.restore;
+    const data = { synced, local: !synced,
+      statusTitle: stState === 'synced' ? 'Saved on this device · synced' : stState === 'syncing' ? 'Saved on this device · syncing…' : stState === 'offline' ? 'Saved on this device · waiting to sync' : 'Saved on this device only',
+      statusBody: stState === 'synced' ? `Every device keeps a full copy, and your account keeps them matched. Last synced ${ago(st.lastSync)}.`
+        : stState === 'syncing' ? 'Matching this device with your account.'
+        : stState === 'offline' ? 'You’re offline or the server couldn’t be reached. Everything is saved on this device and will sync automatically when you’re back online.'
+        : st.configured ? 'Everything is saved on this device. Sign in to keep your phone and laptop matched.'
+        : 'Everything is saved on this device. Sync isn’t set up in this copy of the app.',
+      statusDot: stState === 'synced' ? '#5fd38d' : stState === 'local' ? '#8e949b' : '#f5c542',
+      account: st.email ? `Signed in as ${st.email}` : '', hasAccount: !!st.email,
+      canSignIn: !!st.configured && !synced, signInOpen: () => { S.authOpen = true; S.authErr = ''; this.up(); },
+      signOut: () => { window.PPL.signOut().then(() => this.up()); },
+      canSync: synced && stState !== 'syncing', syncNow: () => window.PPL.syncNow(),
+      migrated:false, migratedMsg:'',
+      msg: S.dataMsg, hasMsg: !!S.dataMsg,
+      backup: () => this.backup(), onRestore: ev => this.pickRestore(ev),
+      hasRestore: !!rs, restoreText: rs ? `Restore ${rs.sessions.length} workouts and ${rs.bodyweight.length} body-weight entries from a backup made ${rs.exportedAt ? new Date(rs.exportedAt).toLocaleDateString(undefined, {month:'short', day:'numeric', year:'numeric'}) : 'earlier'}? This adds them to your data and overwrites matching entries. Nothing is deleted.` : '',
+      restoreYes: () => this.confirmRestore(), restoreNo: () => { S.restore = null; this.up(); } };
+    return { data, groups, bw, noBw: !bw.length, defInc: P.DEFAULT_INC, bwDate: S.bwDraft.date, bwW: S.bwDraft.w,
+      onDate: ev => { S.bwDraft.date = ev.target.value; this.up(); }, onW: ev => { S.bwDraft.w = ev.target.value; this.up(); },
+      saveBw: () => { const dt = S.bwDraft.date, w = P.num(S.bwDraft.w); if (!valid(dt, w)) return; const now = Date.now(), en = { id:now, date:dt, weightKg:w, createdAt:now, updatedAt:now }; S.bw.push(en); this.persist(() => P.putBW(en)); S.bwDraft.w = ''; this.vib(10); this.up(); },
+      edDate: S.bwEditDraft.date, edW: S.bwEditDraft.w, onEdDate: ev => { S.bwEditDraft.date = ev.target.value; this.up(); }, onEdW: ev => { S.bwEditDraft.w = ev.target.value; this.up(); } };
+  }
+  confettiEl(){
+    const S = this.S, a = S.active, now = Date.now(); let key = null;
+    if (S.recap && S.recap.at && now - S.recap.at < 4000) key = 'r' + S.recap.at;
+    else if (a && a.flash && now - a.flash.at < 4000){ const f = a.flash; if (f.best || (f.top && (f.top.status === 'unlocked' || f.top.records.length))) key = 'f' + f.at; }
+    if (!key) return null;
+    if (this._cf && this._cf.key === key) return this._cf.el;
+    const cols = ['#f5c542', '#5fd38d', '#f1efe9', '#ff8a65', '#7cc7ff', '#ffd96b'], kids = [];
+    for (let i = 0; i < 56; i++){ const ang = Math.random() * Math.PI * 2, dist = 140 + Math.random() * 320;
+      kids.push(React.createElement('span', { key:i, style:{ position:'absolute', left:'50%', top:'38%', width:5 + Math.random() * 6, height:9 + Math.random() * 9, background:cols[i % cols.length], borderRadius:2,
+        '--x': (Math.cos(ang) * dist).toFixed(0) + 'px', '--y': (Math.sin(ang) * dist + 260).toFixed(0) + 'px', '--r': (Math.random() * 900 - 450).toFixed(0) + 'deg',
+        animation:`confetti ${(1.3 + Math.random()).toFixed(2)}s cubic-bezier(.12,.7,.3,1) ${(Math.random() * 0.12).toFixed(2)}s forwards` } })); }
+    const el = React.createElement('div', { key, 'aria-hidden':true, style:{ position:'fixed', inset:0, pointerEvents:'none', zIndex:90, overflow:'hidden' } }, kids);
+    this._cf = { key, el }; return el;
+  }
+
+  renderVals(){
+    const P = window.PPL, S = this.S, wide = this.state.vw >= 900, loaded = !!(P && S.loaded);
+    const V = { wide, loading: !loaded, storageWarn: loaded && !S.storageOk,
+      isHome:false, isWorkout:false, isDash:false, isHist:false, isSettings:false, showTimer:false, showMini:false, showRecap:false, showConfirm:false, showAuth:false, au:{}, showTabbar:false,
+      home:{}, wk:{}, tm:{}, rc:{}, cf:{}, dash:{}, hist:{}, st:{}, streak:{ week:[] }, confetti:null,
+      editW: S.editDraft.w, editR: S.editDraft.r,
+      onEditW: ev => { S.editDraft.w = ev.target.value; this.up(); }, onEditR: ev => { S.editDraft.r = ev.target.value; this.up(); },
+      saveEdit: () => this.saveEdit(), cancelEdit: () => { S.editing = null; this.up(); } };
+    V.nav = [['home', S.active ? 'Workout' : 'Today'], ['dash', 'Progress'], ['history', 'History'], ['settings', 'Settings']].map(([k, label]) => { const on = S.view === k;
+      return { label, go: () => this.go(k), bg: on ? '#f5c542' : 'transparent', fg: on ? '#191204' : '#a3a9b0', sideBg: on ? 'rgba(245,197,66,.1)' : 'transparent', sideFg: on ? '#f5c542' : '#a3a9b0', bar: on ? '#f5c542' : 'rgba(255,255,255,.15)' }; });
+    if (!loaded) return V;
+    V.streak = this.streakVals();
+    const a = S.active;
+    if (S.view === 'home'){ if (a){ V.isWorkout = true; V.wk = this.workoutVals(); } else { V.isHome = true; V.home = this.homeVals(); } }
+    else if (S.view === 'dash'){ V.isDash = true; V.dash = this.dashVals(V.streak); }
+    else if (S.view === 'history'){ V.isHist = true; V.hist = this.histVals(); }
+    else { V.isSettings = true; V.st = this.settingsVals(); }
+    if (a && a.timer){ V.tm = this.timerVals(); V.showTimer = !a.timer.min; V.showMini = !!a.timer.min; }
+    if (S.recap){ V.showRecap = true; V.rc = this.recapVals(); }
+    if (S.confirm){ V.showConfirm = true; V.cf = this.confirmVals(); }
+    if (S.authOpen){ V.showAuth = true; V.au = this.authVals(); }
+    V.showTabbar = !wide && !V.showTimer && !V.showRecap;
+    V.confetti = this.confettiEl();
+    return V;
+  }
+}
+</script>
+<script>
+if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+</script>
+</body>
+</html>
