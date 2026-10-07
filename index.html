@@ -334,6 +334,7 @@ input[type="date"]{color-scheme:dark}
                       </div>
                     </div>
                     <button onClick="{{wk.log}}" disabled="{{wk.cantLog}}" style="height:68px;border:0;border-radius:22px;background:{{wk.btnBg}};color:{{wk.btnFg}};font:700 17px 'IBM Plex Sans';cursor:pointer;box-shadow:{{wk.btnShadow}};transition:background .3s,color .3s,box-shadow .3s,transform .15s" style-active="transform:scale(.975)">{{wk.btnLabel}}</button>
+                    <sc-if value="{{wk.canSkipWarm}}"><button onClick="{{wk.skipWarm}}" style="align-self:center;background:none;border:0;padding:6px 10px;color:#a3a9b0;font:600 14px 'IBM Plex Sans';cursor:pointer;text-decoration:underline;text-underline-offset:3px">Skip warm-up</button></sc-if>
                     <div style="display:flex;flex-direction:column;gap:8px">
                       <button onClick="{{wk.toggleWhy}}" style="align-self:flex-start;background:none;border:0;padding:0;color:#8e949b;font:600 13px 'IBM Plex Sans';cursor:pointer">{{wk.whyLabel}}</button>
                       <sc-if value="{{wk.whyOpen}}"><div style="font-size:13px;color:#a3a9b0;display:flex;flex-direction:column;gap:6px;animation:fade .3s both;text-wrap:pretty"><p style="margin:0">{{wk.why}}</p><p style="margin:0">{{wk.restTxt}}</p></div></sc-if>
@@ -801,7 +802,7 @@ class Component extends DCLogic {
       // Background sync: re-read the local copy when the account brought in changes from another device.
       setTimeout(() => { const st = P.STORAGE; let seen = null; try{ seen = localStorage.getItem('ppl-auth-asked'); }catch(e){}
         if (st.configured && st.mode !== 'sync' && !seen){ S.authOpen = true; this.up(); } }, 900);
-      P.onStorageChange(kind => { if (kind === 'data') this.loadData().then(() => this.up()).catch(() => {}); else this.up(); });
+      P.onStorageChange(kind => { if (kind === 'data') this.loadData().then(() => this.up()).catch(() => {}); else { this.autoRest(); this.up(); } });
     }catch(e){ this.dbOk = false; S.storageOk = false; }
     S.loaded = true; this.up();
   }
@@ -814,6 +815,26 @@ class Component extends DCLogic {
     S.meta = meta || {lastCompleted:null}; S.incs = incs || {};
     if (active){ S.active = active; this.wake(true); } else if (!S.active) S.active = null;
     S.history = (sessions || []).sort((a, b) => b.id - a.id);
+    this.autoRest();
+  }
+  // A day that ends with no workout logged is a rest day — you rested, so it counts as one (streaks included).
+  // Only days already over (today is still open), only from your first logged workout, at most 60 days back.
+  // When signed in it waits until this device has synced, so a workout logged on another device isn't missed.
+  // Rotation: if Rest was next and the day passed without training, Rest is done (Push is next); otherwise
+  // the rotation waits — the workout you didn't do is still next.
+  autoRest(){
+    const P = window.PPL, S = this.S, st = P.STORAGE;
+    if (!S.history.length || (st.mode === 'sync' && !st.lastSync)) return;
+    const trained = new Set(S.history.map(s => P.dateKey(s.date))), rest = new Set(S.restDays), today = P.dateKey(new Date());
+    const firstKey = [...trained].sort()[0], lastKey = [...trained].sort().pop(), added = [];
+    const d = new Date(); d.setDate(d.getDate() - 1);
+    for (let i = 0; i < 60; i++, d.setDate(d.getDate() - 1)){
+      const k = P.dateKey(d); if (k < firstKey) break;
+      if (!trained.has(k) && !rest.has(k) && k < today) added.push(k);
+    }
+    if (!added.length) return;
+    S.restDays = [...S.restDays, ...added].sort(); this.saveRestDays();
+    if (P.nextDay(S.meta.lastCompleted) === 'rest' && !S.active && added.some(k => k > lastKey)){ S.meta.lastCompleted = 'rest'; this.saveMeta(); }
   }
   refreshFromAccount(){ if (this.dbOk) window.PPL.syncNow(); }
   // ---------- account ----------
@@ -975,6 +996,7 @@ class Component extends DCLogic {
     else { a.summaryFor = e.id; if (this.nextIncomplete() < 0) a.timer = null; else this.startTimer(P.restFor(e, true), 'next exercise'); }
     this.saveActive(); this.up();
   }
+  skipWarm(e){ const S = this.S, a = S.active; a.entries[e.id].warm = { skipped:true }; a.notice = 'Warm-up skipped. Set 1 is next — this is the one that counts.'; S.draft = null; this.vib(10); this.saveActive(); this.up(); }
   logCurrent(e, step, isWarm){
     const P = window.PPL, S = this.S, a = S.active, d = S.draft; if (!d) return;
     const w = P.num(d.w), r = d.r; if (w == null || w < 0 || r == null) return;
@@ -999,7 +1021,7 @@ class Component extends DCLogic {
     if (t.paused) t.remaining = nl; else t.endAt = Date.now() + nl * 1000;
     if (nl > t.total) t.total = nl; if (nl > 0) t.beeped = false; this.vib(5); this.saveActive(); this.up(); }
   skipTimer(){ this.S.active.timer = null; this.vib(8); this.saveActive(); this.up(); }
-  startEdit(key, v){ const P = window.PPL; this.S.editing = key; this.S.editDraft = { w: v ? P.fmt(v.w) : '', r: v ? String(v.r) : '' }; this.up(); }
+  startEdit(key, v){ const P = window.PPL; if (v && v.skipped) v = null; this.S.editing = key; this.S.editDraft = { w: v ? P.fmt(v.w) : '', r: v ? String(v.r) : '' }; this.up(); }
   saveEdit(){
     const P = window.PPL, S = this.S, k0 = S.editing; if (!k0) return;
     const w = P.num(S.editDraft.w), r = P.int(S.editDraft.r); if (w == null || w < 0 || r == null || r < 0) return;
@@ -1087,8 +1109,8 @@ class Component extends DCLogic {
     const e = list[a.exIndex], entry = a.entries[e.id], c = this.compute(e, entry), step = this.stepOf(e, entry, c), cat = P.CATS[e.cat];
     W.exName = e.name;
     W.meta = [{ t:cat.label }, { t:`${e.lo}–${e.hi} reps` }, { t:`${P.fmtTime(cat.between)} rest` }];
-    W.dots = [['W', entry.warm, step === 'warm'], ...entry.sets.map((s, i) => [String(i + 1), s, step === i])].map(([t, v, cur]) => ({ t: v ? '✓' : t,
-      bg: v ? '#5fd38d' : cur ? 'rgba(245,197,66,.14)' : 'rgba(255,255,255,.05)', fg: v ? '#06140c' : cur ? '#f5c542' : '#8e949b', ring: cur ? 'inset 0 0 0 2px #f5c542' : 'none' }));
+    W.dots = [['W', entry.warm, step === 'warm'], ...entry.sets.map((s, i) => [String(i + 1), s, step === i])].map(([t, v, cur]) => ({ t: v ? (v.skipped ? '–' : '✓') : t,
+      bg: v && v.skipped ? 'rgba(255,255,255,.12)' : v ? '#5fd38d' : cur ? 'rgba(245,197,66,.14)' : 'rgba(255,255,255,.05)', fg: v ? '#06140c' : cur ? '#f5c542' : '#8e949b', ring: cur ? 'inset 0 0 0 2px #f5c542' : 'none' }));
     W.hasNotice = !!a.notice; W.notice = a.notice || '';
     const f = a.flash, sentence = s => { const l = s.toLowerCase(); return l.charAt(0).toUpperCase() + l.slice(1); };
     W.hasFlash = false; W.hasTop = false; W.flash = {}; W.top = {};
@@ -1135,6 +1157,7 @@ class Component extends DCLogic {
       W.cantLog = !ok; W.btnBg = ok ? '#f5c542' : 'rgba(255,255,255,.06)'; W.btnFg = ok ? '#191204' : '#6f757c'; W.btnShadow = ok ? '0 16px 40px -12px rgba(245,197,66,.65)' : 'none';
       W.btnLabel = !ok ? 'Tap your reps' : isWarm ? `Log warm-up · ${P.fmt(curW)} kg × ${d.r}` : `Complete set · ${P.fmt(curW)} kg × ${d.r}`;
       W.log = () => this.logCurrent(e, step, isWarm);
+      W.canSkipWarm = isWarm; W.skipWarm = () => this.skipWarm(e);
       W.whyOpen = !!S.whyOpen; W.whyLabel = S.whyOpen ? 'Hide reasoning' : 'Why this weight?'; W.toggleWhy = () => { S.whyOpen = !S.whyOpen; this.up(); };
       W.why = isWarm ? c.warm.reason : step === 0 ? c.set1Reason : c.sets[step].reason;
       W.restTxt = isWarm ? 'No rest timer after the warm-up.' : 'Rest after this set: ' + P.restFor(e, step === e.sets - 1).reason;
@@ -1146,7 +1169,7 @@ class Component extends DCLogic {
     if (W.isExDone){ const ni = this.nextIncomplete();
       W.exDoneLabel = ni >= 0 ? 'Next exercise →' : 'Wrap up →';
       W.exDoneGo = ni >= 0 ? () => this.jump(ni) : () => { a.done = true; a.timer = null; this.saveActive(); this.up(); }; }
-    const row = (key, label, target, calc, val, cur) => ({ label, target, calc, hasActual: !!val, actual: val ? `${P.fmt(val.w)} × ${val.r}` : '', editing: S.editing === key,
+    const row = (key, label, target, calc, val, cur) => ({ label, target, calc, hasActual: !!val, actual: val ? (val.skipped ? 'Skipped' : `${P.fmt(val.w)} × ${val.r}`) : '', editing: S.editing === key,
       edit: () => this.startEdit(key, val), bg: cur ? 'rgba(245,197,66,.08)' : 'transparent', lblFg: cur ? '#f5c542' : '#f1efe9' });
     W.plan = [row(`a:${e.id}:w`, 'Warm-up', c.warm ? `${P.fmt(c.warm.weight)} × 8–10` : '—', c.warm ? c.warm.calc : '', entry.warm, step === 'warm'),
       ...c.sets.map((s, i) => row(`a:${e.id}:${i}`, i === 0 ? 'Set 1 · top' : `Set ${i + 1}`, s.weight != null ? `${P.fmt(s.weight)} × ${e.lo}–${e.hi}` : '—', (s.calc || '') + (i > 0 && s.pct ? ` · ${P.pctLabel(s.pct)}` : ''), entry.sets[i], step === i))];
@@ -1239,13 +1262,13 @@ class Component extends DCLogic {
     const P = window.PPL, S = this.S, sorted = [...S.history].sort((a, b) => b.id - a.id);
     return { empty: !sorted.length, sessions: sorted.map((s, idx) => {
       const open = S.openSess[s.id] ?? idx === 0;
-      const exs = (P.PROGRAM[s.day] || []).filter(e => s.entries[e.id] && (s.entries[e.id].warm || s.entries[e.id].sets.some(Boolean)));
+      const exs = (P.PROGRAM[s.day] || []).filter(e => s.entries[e.id] && ((s.entries[e.id].warm && !s.entries[e.id].warm.skipped) || s.entries[e.id].sets.some(Boolean)));
       const nSets = exs.reduce((n, e) => n + s.entries[e.id].sets.filter(Boolean).length, 0);
       return { title: new Date(s.date).toLocaleDateString(undefined, { weekday:'long', month:'short', day:'numeric' }), day: P.DAY_NAMES[s.day] || s.day,
         sub: `${exs.length} exercises · ${nSets} sets`, open, rot: open ? '-90deg' : '90deg', toggle: () => { S.openSess[s.id] = !open; this.up(); },
         exs: open ? exs.map(e => { const en = s.entries[e.id];
           return { name:e.name, rows: [['w', 'Warm-up', en.warm], ...en.sets.map((v, i) => [i, `Set ${i + 1}`, v])].map(([k, label, v]) => { const key = `h:${s.id}:${e.id}:${k}`;
-            return { label, hasVal: !!v, noVal: !v, val: v ? `${P.fmt(v.w)} kg × ${v.r}` : '', edit: () => this.startEdit(key, v), editing: S.editing === key }; }) }; }) : [] }; }) };
+            return { label, hasVal: !!v, noVal: !v, val: v ? (v.skipped ? 'Skipped' : `${P.fmt(v.w)} kg × ${v.r}`) : '', edit: () => this.startEdit(key, v), editing: S.editing === key }; }) }; }) : [] }; }) };
   }
   settingsVals(){
     const P = window.PPL, S = this.S, valid = (dt, w) => /^\d{4}-\d{2}-\d{2}$/.test(dt || '') && w != null && w > 0;

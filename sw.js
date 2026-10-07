@@ -1,7 +1,7 @@
 // Offline support. The app's own files are cached so it opens with no connection.
 // Bump VERSION whenever the app's files change; the new version installs in the background
 // and takes over the next time the app is opened.
-const VERSION = 'ppl-coach-v1';
+const VERSION = 'ppl-coach-v2';
 const SHELL = [
   './', 'index.html', 'support.js', 'ppl-logic.js', 'config.js', 'manifest.webmanifest',
   'vendor/react.production.min.js', 'vendor/react-dom.production.min.js', 'vendor/supabase.js',
